@@ -4,10 +4,18 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test -ws",
-    "dev": "npm run dev -w apps/api",
     "build": "npm run build -ws",
     "lint": "npm run lint -ws",
-    "format": "npm run format -ws"
+    "format": "npm run format -ws",
+
+    "api:dev": "npm run dev -w apps/api",
+    "api:build": "npm run build -w apps/api",
+    "api:lint": "npm run lint -w apps/api",
+    "api:format": "npm run format -w apps/api",
+
+    "api:prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
+    "api:prisma:migrate": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
+    "api:prisma:studio": "prisma studio --schema apps/api/prisma/schema.prisma"
   },
   "keywords": [],
   "author": "",
