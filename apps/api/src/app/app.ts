@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import sensible from "@fastify/sensible";
+import { projectsRoutes } from "../modules/projects/projects.routes";
 import { randomUUID } from "node:crypto";
 
 import { registerErrorHandler } from "./middlewares/errorHandler.js";
@@ -32,7 +33,26 @@ export async function buildApp() {
     return payload;
   });
 
-  // 👇 IMPORTANTÍSIMO: handlers antes de registrar plugins/routes
+  app.addHook("onRequest", async (req) => {
+    req.log.info({ step: "H_onRequest" }, "hook");
+  });
+
+  app.addHook("preParsing", async (req) => {
+    req.log.info({ step: "H_preParsing" }, "hook");
+  });
+
+  app.addHook("preValidation", async (req) => {
+    req.log.info({ step: "H_preValidation" }, "hook");
+  });
+
+  app.addHook("preHandler", async (req) => {
+    req.log.info({ step: "H_preHandler" }, "hook");
+  });
+
+  app.addHook("onResponse", async (req, reply) => {
+    req.log.info({ step: "H_onResponse", status: reply.statusCode }, "hook");
+  });
+
   registerNotFoundHandler(app);
   registerErrorHandler(app);
 
@@ -41,6 +61,7 @@ export async function buildApp() {
       await v1.register(healthRoutes);
       await v1.register(authRoutes);
       await v1.register(workersRoutes);
+      await v1.register(projectsRoutes);
     },
     { prefix: "/api/v1" }
   );

@@ -48,3 +48,9 @@ export class InternalError extends AppError {
     super({ code: "INTERNAL_ERROR", status: 500, message });
   }
 }
+
+export class ConflictError extends AppError {
+  constructor(code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS", message: string) {
+    super({ code, status: 409, message });
+  }
+}

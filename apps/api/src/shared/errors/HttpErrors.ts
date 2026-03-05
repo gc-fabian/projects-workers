@@ -19,8 +19,20 @@ export class NotFoundError extends AppError {
   }
 }
 
-export class ConflictError extends AppError {
-  constructor(message = "Conflict") {
-    super({ code: "CONFLICT", status: 409, message });
+export class BadRequestError extends Error {
+  statusCode = 400 as const;
+  code = "BAD_REQUEST" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "BadRequestError";
+  }
+}
+
+export class ConflictError extends Error {
+  statusCode = 409 as const;
+  code = "CONFLICT" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "ConflictError";
   }
 }

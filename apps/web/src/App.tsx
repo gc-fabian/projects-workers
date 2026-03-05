@@ -1,10 +1,20 @@
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
+
 export function App() {
   return (
-    <div style={{ fontFamily: "system-ui", padding: 16 }}>
-      <h1>Web (MVP)</h1>
-      <p>
-        Repo inicializado. API: <code>/api/v1/health</code>
-      </p>
-    </div>
+    <BrowserRouter>
+      <div style={{ fontFamily: "system-ui", padding: 16 }}>
+        <nav style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <Link to="/projects">Projects</Link>
+        </nav>
+
+        <Routes>
+          <Route path="/" element={<Navigate to="/projects" replace />} />
+          <Route path="/projects" element={<ProjectsListPage />} />
+          {/* después agregas: <Route path="/projects/:projectId" ... /> */}
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }

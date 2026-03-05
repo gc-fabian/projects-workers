@@ -1,0 +1,103 @@
+.
+├── apps/
+│   ├── api/
+│   │   ├── prisma/
+│   │   │   ├── migrations/
+│   │   │   │   ├── 20260228192745_init_workers/
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20260301024743_projects_crud/
+│   │   │   │   │   └── migration.sql
+│   │   │   │   └── 20260301205623/
+│   │   │   │       └── migration.sql
+│   │   │   └── schema.prisma
+│   │   ├── src/
+│   │   │   ├── app/
+│   │   │   │   ├── middlewares/
+│   │   │   │   │   ├── errorHandler.ts
+│   │   │   │   │   ├── notFound.ts
+│   │   │   │   │   └── requestId.ts
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── health.routes.ts
+│   │   │   │   ├── app.ts
+│   │   │   │   └── server.ts
+│   │   │   ├── modules/
+│   │   │   │   ├── auth/
+│   │   │   │   │   ├── auth.controller.ts
+│   │   │   │   │   ├── auth.routes.ts
+│   │   │   │   │   ├── auth.schemas.ts
+│   │   │   │   │   └── auth.service.ts
+│   │   │   │   ├── projects/
+│   │   │   │   │   ├── projects.controller.ts
+│   │   │   │   │   ├── projects.dtos.ts
+│   │   │   │   │   ├── projects.mappers.ts
+│   │   │   │   │   ├── projects.repository.ts
+│   │   │   │   │   ├── projects.routes.ts
+│   │   │   │   │   ├── projects.schemas.ts
+│   │   │   │   │   ├── projects.service.ts
+│   │   │   │   │   ├── projectsWorkers.controller.ts
+│   │   │   │   │   ├── projectsWorkers.repository.ts
+│   │   │   │   │   └── projectsWorkers.service.ts
+│   │   │   │   └── workers/
+│   │   │   │       ├── workers.controller.ts
+│   │   │   │       ├── workers.dtos.ts
+│   │   │   │       ├── workers.mappers.ts
+│   │   │   │       ├── workers.repository.ts
+│   │   │   │       ├── workers.routes.ts
+│   │   │   │       ├── workers.schemas.ts
+│   │   │   │       └── workers.service.ts
+│   │   │   └── shared/
+│   │   │       ├── db/
+│   │   │       │   └── prisma.ts
+│   │   │       ├── errors/
+│   │   │       │   ├── AppError.ts
+│   │   │       │   ├── HttpErrors.ts
+│   │   │       │   └── errorCodes.ts
+│   │   │       ├── http/
+│   │   │       │   └── types.ts
+│   │   │       ├── middlewares/
+│   │   │       │   └── auth.ts
+│   │   │       └── validation/
+│   │   │           └── zod.ts
+│   │   ├── .env.example
+│   │   ├── eslint.config.js
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
+│   └── web/
+│       ├── src/
+│       │   ├── features/
+│       │   │   └── projects/
+│       │   │       ├── api/
+│       │   │       │   ├── projectsApi.js
+│       │   │       │   └── projectsApi.ts
+│       │   │       ├── components/
+│       │   │       │   ├── ProjectModal.js
+│       │   │       │   └── ProjectModal.tsx
+│       │   │       ├── hooks/
+│       │   │       │   ├── useProjects.js
+│       │   │       │   └── useProjects.ts
+│       │   │       ├── pages/
+│       │   │       │   ├── ProjectsListPage.js
+│       │   │       │   └── ProjectsListPage.tsx
+│       │   │       ├── schemas/
+│       │   │       │   ├── projectForm.schema.js
+│       │   │       │   └── projectForm.schema.ts
+│       │   │       └── types/
+│       │   │           ├── projects.js
+│       │   │           └── projects.ts
+│       │   ├── shared/
+│       │   │   └── api/
+│       │   │       ├── http.js
+│       │   │       └── http.ts
+│       │   ├── App.js
+│       │   ├── App.tsx
+│       │   ├── main.js
+│       │   ├── main.tsx
+│       │   └── vite-env.d.ts
+│       ├── eslint.config.js
+│       ├── package.json
+│       ├── tsconfig.json
+│       └── vite.config.ts
+├── package.json
+├── project_context.md
+└── tsconfig.base.json

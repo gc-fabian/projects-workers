@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { buildApp } from "./app.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -7,7 +9,7 @@ const app = await buildApp();
 
 try {
   await app.listen({ port: PORT, host: HOST });
-  app.log.info("API listening on http://" + HOST + ":" + PORT + "/api/v1");
+  app.log.info(`API listening on http://${HOST}:${PORT}/api/v1`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);

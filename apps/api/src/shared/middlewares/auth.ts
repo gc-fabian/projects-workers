@@ -1,14 +1,14 @@
-import type { FastifyRequest } from "fastify";
-import { UnauthorizedError } from "../errors/AppError.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { UnauthorizedError } from "../errors/AppError";
 
-export type RequestWithAuthHeader = FastifyRequest & {
-  headers: {
-    authorization?: string;
-  };
-};
+export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
+  req.log.info({ step: "AUTH" }, "requireAuth");
+  const auth = req.headers.authorization ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
 
-export function requireAuth(req: RequestWithAuthHeader) {
-  const header = req.headers.authorization ?? "";
-  const expected = "Bearer dev-token";
-  if (header !== expected) throw new UnauthorizedError();
+  if (!token || token !== "dev-token") {
+    throw new UnauthorizedError();
+  }
+
+  return;
 }

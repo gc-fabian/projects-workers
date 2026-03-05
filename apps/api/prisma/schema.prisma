@@ -12,9 +12,38 @@ enum Seniority {
   semiSenior
   senior
 }
+
 model Worker {
-  id        String    @id @default(uuid())
+  id        String @id @default(uuid())
   name      String
   role      String
   seniority Seniority
+
+  projectWorkers ProjectWorker[]
+
+  @@map("workers")
+}
+
+model Project {
+  id         String    @id @default(uuid())
+  name       String
+  clientName String
+  startDate  DateTime
+  endDate    DateTime?
+
+  workers ProjectWorker[]
+
+  @@map("projects")
+  @@unique([name, clientName, startDate])
+}
+
+model ProjectWorker {
+  projectId String
+  workerId  String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  worker  Worker  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, workerId])
+  @@map("project_workers")
 }

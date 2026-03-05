@@ -1,31 +1,34 @@
 {
   "name": "projects-workers-monorepo",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
+  "workspaces": ["apps/*"],
   "scripts": {
-    "test": "npm run test -ws",
-    "build": "npm run build -ws",
-    "lint": "npm run lint -ws",
-    "format": "npm run format -ws",
+    "test": "npm run test -w apps/api && npm run test -w apps/web",
+    "build": "npm run build -w apps/api && npm run build -w apps/web",
+    "lint": "npm run lint -w apps/api && npm run lint -w apps/web",
+    "format": "npm run format -w apps/api && npm run format -w apps/web",
 
-    "api:dev": "npm run dev -w apps/api",
-    "api:build": "npm run build -w apps/api",
-    "api:lint": "npm run lint -w apps/api",
-    "api:format": "npm run format -w apps/api",
+    "api:dev": "npm --prefix apps/api run dev",
+    "api:build": "npm --prefix apps/api run build",
+    "api:lint": "npm --prefix apps/api run lint",
+    "api:format": "npm --prefix apps/api run format",
 
-    "api:prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
-    "api:prisma:migrate": "prisma migrate dev --schema apps/api/prisma/schema.prisma",
-    "api:prisma:studio": "prisma studio --schema apps/api/prisma/schema.prisma"
+    "web:dev": "npm run dev -w apps/web",
+    "web:build": "npm run build -w apps/web",
+    "web:lint": "npm run lint -w apps/web",
+    "web:format": "npm run format -w apps/web",
+
+    "api:prisma:generate": "npm --prefix apps/api run prisma:generate",
+    "api:prisma:migrate:dev": "npm --prefix apps/api run prisma:migrate:dev",
+    "api:prisma:migrate:reset": "npm --prefix apps/api run prisma:migrate:reset",
+    "api:prisma:migrate:deploy": "npm --prefix apps/api run prisma:migrate:deploy",
+    "api:prisma:studio": "npm --prefix apps/api run prisma:studio"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "private": "true",
-  "workspaces": [
-    "apps/*"
-  ],
   "devDependencies": {
+    "eslint": "^10.0.2",
+    "prettier": "^3.8.1",
     "prisma": "^6.19.2"
   },
   "dependencies": {
