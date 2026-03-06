@@ -5,35 +5,34 @@ import prettierPlugin from "eslint-plugin-prettier";
 import tseslint from "typescript-eslint";
 
 export default [
-  { ignores: ["dist/**"] },
+  { ignores: ["dist/**", "node_modules/**", "src/**/*.js"] },
 
-  // ✅ Base JS
   js.configs.recommended,
-
-  // ✅ TypeScript + TSX (incluye parser)
   ...tseslint.configs.recommended,
+  prettier,
 
-  // Código del browser (React/Vite)
   {
-    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
-        ...globals.browser, // document, fetch, window, etc.
+        ...globals.browser,
         ...globals.es2021
+      },
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
       }
     },
     plugins: {
       prettier: prettierPlugin
     },
     rules: {
-      ...prettier.rules,
       "prettier/prettier": "error"
     }
   },
 
-  // Archivos de config (Node)
   {
     files: ["*.{js,cjs,mjs}", "vite.config.*", "eslint.config.*"],
     languageOptions: {

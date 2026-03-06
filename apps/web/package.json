@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"(no tests yet)\"",
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier -w .",

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { toDtoSeniority } from "../workers/workers.mappers.js";
 
 export type ProjectWithWorkers = Prisma.ProjectGetPayload<{
   include: { workers: { include: { worker: true } } };
@@ -16,6 +17,6 @@ export const mapProjectToDTO = (project: ProjectWithWorkers) => ({
     id: pw.worker.id,
     name: pw.worker.name,
     role: pw.worker.role,
-    seniority: pw.worker.seniority
+    seniority: toDtoSeniority(pw.worker.seniority)
   }))
 });

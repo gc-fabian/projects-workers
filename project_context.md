@@ -1,6 +1,6 @@
 # Project Context Package
 
-- Generated at: 2026-03-05T00:21:41-03:00
+- Generated at: 2026-03-06T19:29:19-03:00
 - Root: `.` (current directory)
 
 ## Rules Used
@@ -83,44 +83,328 @@
 │   └── web/
 │       ├── src/
 │       │   ├── features/
+│       │   │   ├── auth/
+│       │   │   │   ├── api/
+│       │   │   │   │   └── authApi.ts
+│       │   │   │   ├── context/
+│       │   │   │   │   └── AuthContext.tsx
+│       │   │   │   ├── pages/
+│       │   │   │   │   └── LoginPage.tsx
+│       │   │   │   └── types/
+│       │   │   │       └── auth.ts
 │       │   │   └── projects/
 │       │   │       ├── api/
-│       │   │       │   ├── projectsApi.js
-│       │   │       │   └── projectsApi.ts
+│       │   │       │   ├── projectsApi.ts
+│       │   │       │   └── workersApi.ts
 │       │   │       ├── components/
-│       │   │       │   ├── ProjectModal.js
 │       │   │       │   └── ProjectModal.tsx
 │       │   │       ├── hooks/
-│       │   │       │   ├── useProjects.js
-│       │   │       │   └── useProjects.ts
+│       │   │       │   ├── useProjectAssignments.ts
+│       │   │       │   ├── useProjectById.ts
+│       │   │       │   ├── useProjects.ts
+│       │   │       │   └── useWorkers.ts
 │       │   │       ├── pages/
-│       │   │       │   ├── ProjectsListPage.js
+│       │   │       │   ├── ProjectDetailPage.tsx
 │       │   │       │   └── ProjectsListPage.tsx
 │       │   │       ├── schemas/
-│       │   │       │   ├── projectForm.schema.js
 │       │   │       │   └── projectForm.schema.ts
 │       │   │       └── types/
-│       │   │           ├── projects.js
 │       │   │           └── projects.ts
 │       │   ├── shared/
 │       │   │   └── api/
-│       │   │       ├── http.js
 │       │   │       └── http.ts
-│       │   ├── App.js
 │       │   ├── App.tsx
-│       │   ├── main.js
 │       │   ├── main.tsx
 │       │   └── vite-env.d.ts
 │       ├── eslint.config.js
 │       ├── package.json
 │       ├── tsconfig.json
+│       ├── vite.config.js
 │       └── vite.config.ts
+├── README.md
 ├── package.json
 ├── project_context.md
 └── tsconfig.base.json
 ```
 
 ## File Contents
+
+```text
+=== README.md ===
+
+# Projects Workers Monorepo
+
+Fullstack technical project implementing **Workers CRUD** and **Projects CRUD** using a **contract‑first approach** with **TypeScript**.
+
+The repository is structured as a monorepo containing a backend API and a frontend web application.
+
+---
+
+# Architecture
+
+Monorepo structure:
+
+```
+apps/
+  api/    -> Fastify + TypeScript backend API
+  web/    -> React + Vite frontend
+```
+
+Backend stack:
+
+- Node.js
+- Fastify
+- TypeScript
+- Prisma ORM
+- SQLite
+- Zod validation
+
+Frontend stack:
+
+- React
+- TypeScript
+- Vite
+- React Query
+- React Hook Form
+- Zod
+
+---
+
+# API Base URL
+
+```
+http://localhost:3000/api/v1
+```
+
+---
+
+# Features Implemented
+
+## Base Infrastructure
+
+- Request ID middleware
+- Global error handler
+- Standard error format
+- Health endpoint
+- Auth middleware (dev token)
+
+Endpoint:
+
+```
+GET /api/v1/health
+```
+
+Response:
+
+```
+{
+  "status": "ok",
+  "requestId": "..."
+}
+```
+
+---
+
+# Authentication
+
+Temporary development login.
+
+```
+POST /api/v1/auth/login
+```
+
+Request:
+
+```
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+Response:
+
+```
+{
+  "accessToken": "dev-token",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
+}
+```
+
+Use token in requests:
+
+```
+Authorization: Bearer dev-token
+```
+
+---
+
+# Workers CRUD
+
+Model:
+
+```
+Worker
+- id (UUID)
+- name
+- role
+- seniority (enum)
+```
+
+Endpoints:
+
+```
+POST   /workers
+GET    /workers
+GET    /workers/:workerId
+PATCH  /workers/:workerId
+DELETE /workers/:workerId
+```
+
+Example create:
+
+```
+POST /workers
+{
+  "name": "John",
+  "role": "Backend Developer",
+  "seniority": "junior"
+}
+```
+
+---
+
+# Projects CRUD
+
+Model:
+
+```
+Project
+- id (UUID)
+- name
+- clientName
+- startDate (YYYY-MM-DD)
+- endDate (optional)
+```
+
+Validation rules:
+
+- startDate format must be `YYYY-MM-DD`
+- if endDate exists → `endDate >= startDate`
+
+Endpoints:
+
+```
+POST   /projects
+GET    /projects
+GET    /projects/:projectId
+PATCH  /projects/:projectId
+DELETE /projects/:projectId
+```
+
+Unique constraint:
+
+```
+(name, clientName, startDate)
+```
+
+Duplicate creation returns:
+
+```
+409 PROJECT_ALREADY_EXISTS
+```
+
+---
+
+# Error Format
+
+All errors follow the same contract.
+
+```
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation error",
+    "details": [],
+    "requestId": "..."
+  }
+}
+```
+
+---
+
+# Running the Project
+
+Install dependencies:
+
+```
+npm install
+```
+
+Start API:
+
+```
+npm run api:dev
+```
+
+Run migrations:
+
+```
+npm run api:prisma:migrate:reset
+```
+
+---
+
+# Quick API Test
+
+Health:
+
+```
+curl http://localhost:3000/api/v1/health
+```
+
+Login:
+
+```
+curl -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+```
+
+Create Worker:
+
+```
+curl -X POST http://localhost:3000/api/v1/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"W1","role":"Dev","seniority":"junior"}'
+```
+
+Create Project:
+
+```
+curl -X POST http://localhost:3000/api/v1/projects -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"P1","clientName":"C1","startDate":"2026-03-01"}'
+```
+
+---
+
+# Next Steps
+
+Upcoming slice:
+
+**Project ↔ Worker Assignments**
+
+Endpoints to implement:
+
+```
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
+```
+
+This will allow assigning workers to projects.
+
+---
+
+# Author
+
+Technical implementation created for a fullstack TypeScript coding challenge.
+```
 
 ```text
 === apps/api/.env.example ===
@@ -142,18 +426,7 @@ export default [
   },
 
   js.configs.recommended,
-
   ...tseslint.configs.recommended,
-
-  // ✅ forzamos root del tsconfig en ESTE workspace
-  {
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: import.meta.dirname
-      }
-    }
-  },
-
   prettierConfig,
 
   {
@@ -161,7 +434,21 @@ export default [
       prettier: prettierPlugin
     },
     rules: {
-      "prettier/prettier": "error"
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" }
+      ]
+    }
+  },
+
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
+      }
     }
   }
 ];
@@ -183,7 +470,6 @@ export default [
     "lint": "eslint .",
     "format": "prettier -w .",
     "format:check": "prettier -c .",
-
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "prisma:migrate:reset": "prisma migrate reset --force --skip-seed --schema prisma/schema.prisma",
@@ -410,6 +696,10 @@ import type { FastifyError, FastifyInstance } from "fastify";
 import { AppError } from "../../shared/errors/AppError.js";
 import type { ErrorResponseDTO } from "../../shared/http/types.js";
 
+type ErrorWithStatusCode = Error & {
+  statusCode?: number;
+};
+
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err: FastifyError | Error, req, reply) => {
     const requestId = String(req.id);
@@ -419,27 +709,25 @@ export function registerErrorHandler(app: FastifyInstance) {
     let message = "Internal error";
     let details: ErrorResponseDTO["error"]["details"] | undefined;
 
-    // 1) Errores de dominio (los tuyos)
     if (err instanceof AppError) {
       status = err.status;
       code = err.code;
       message = err.message;
       details = err.details;
-    }
-    // 2) Errores propios de Fastify (JSON inválido, etc.)
-    else if (typeof (err as any)?.statusCode === "number") {
-      status = (err as any).statusCode;
+    } else {
+      const fastifyErr = err as ErrorWithStatusCode;
 
-      // Si quieres mapear más fino después, aquí es el lugar.
-      code = status >= 500 ? "INTERNAL_ERROR" : "VALIDATION_ERROR";
-      message = err.message || (status >= 500 ? "Internal error" : "Validation error");
+      if (typeof fastifyErr.statusCode === "number") {
+        status = fastifyErr.statusCode;
+        code = status >= 500 ? "INTERNAL_ERROR" : "VALIDATION_ERROR";
+        message =
+          err.message ||
+          (status >= 500 ? "Internal error" : "Validation error");
 
-      // Logueamos igual, pero no lo tratamos como 500
-      app.log.warn({ err, requestId }, "Non-domain error");
-    }
-    // 3) Unknown -> 500
-    else {
-      app.log.error({ err, requestId }, "Unhandled error");
+        app.log.warn({ err, requestId }, "Non-domain error");
+      } else {
+        app.log.error({ err, requestId }, "Unhandled error");
+      }
     }
 
     const payload: ErrorResponseDTO = {
@@ -447,8 +735,8 @@ export function registerErrorHandler(app: FastifyInstance) {
         code,
         message,
         ...(details ? { details } : {}),
-        requestId,
-      },
+        requestId
+      }
     };
 
     reply.status(status).send(payload);
@@ -560,7 +848,7 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
 ```text
 === apps/api/src/modules/auth/auth.routes.ts ===
 import type { FastifyInstance } from "fastify";
-import * as controller from "./auth.controller";
+import * as controller from "./auth.controller.js";
 
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", controller.login);
@@ -581,14 +869,29 @@ export type LoginBody = z.infer<typeof loginBodySchema>;
 
 ```text
 === apps/api/src/modules/auth/auth.service.ts ===
-import { InvalidCredentialsError } from "../../shared/errors/AppError";
-import type { LoginBody } from "./auth.schemas";
+import { InvalidCredentialsError } from "../../shared/errors/AppError.js";
+import type { LoginBody } from "./auth.schemas.js";
+
+const AUTH_USERNAME = "admin";
+const AUTH_PASSWORD = "admin123";
+const AUTH_ACCESS_TOKEN = "dev-token";
+const AUTH_TOKEN_TYPE = "Bearer" as const;
+const AUTH_EXPIRES_IN = 3600;
 
 export function login(body: LoginBody) {
-  if (body.username !== "admin" || body.password !== "admin123") {
+  if (body.username !== AUTH_USERNAME || body.password !== AUTH_PASSWORD) {
     throw new InvalidCredentialsError();
   }
-  return { accessToken: "dev-token", tokenType: "Bearer", expiresIn: 3600 };
+
+  return {
+    accessToken: AUTH_ACCESS_TOKEN,
+    tokenType: AUTH_TOKEN_TYPE,
+    expiresIn: AUTH_EXPIRES_IN
+  };
+}
+
+export function isValidAccessToken(token: string) {
+  return token === AUTH_ACCESS_TOKEN;
 }
 ```
 
@@ -672,7 +975,7 @@ export type WorkerInProjectDTO = {
   id: string;
   name: string;
   role: string;
-  seniority: string;
+  seniority: "junior" | "semi-senior" | "senior";
 };
 
 export type ProjectResponseDTO = {
@@ -688,6 +991,7 @@ export type ProjectResponseDTO = {
 ```text
 === apps/api/src/modules/projects/projects.mappers.ts ===
 import type { Prisma } from "@prisma/client";
+import { toDtoSeniority } from "../workers/workers.mappers.js";
 
 export type ProjectWithWorkers = Prisma.ProjectGetPayload<{
   include: { workers: { include: { worker: true } } };
@@ -705,7 +1009,7 @@ export const mapProjectToDTO = (project: ProjectWithWorkers) => ({
     id: pw.worker.id,
     name: pw.worker.name,
     role: pw.worker.role,
-    seniority: pw.worker.seniority
+    seniority: toDtoSeniority(pw.worker.seniority)
   }))
 });
 ```
@@ -824,7 +1128,11 @@ export const projectIdParamsSchema = z.object({
 === apps/api/src/modules/projects/projects.service.ts ===
 import type { ProjectCreateDTO, ProjectUpdateDTO } from "./projects.dtos";
 import { projectsRepository } from "./projects.repository";
-import { ValidationError, NotFoundError, ConflictError } from "../../shared/errors/AppError.js";
+import {
+  ValidationError,
+  NotFoundError,
+  ConflictError
+} from "../../shared/errors/AppError.js";
 
 /**
  * Valida YYYY-MM-DD y devuelve Date (UTC 00:00:00.000Z)
@@ -851,7 +1159,12 @@ function assertEndAfterStart(start: Date, end: Date | null) {
 
 // Prisma P2002 -> ConflictError (shape check, no instanceof)
 function prismaUniqueToConflict(e: unknown): never {
-  const anyErr = e as { code?: unknown; meta?: unknown; name?: unknown; message?: unknown };
+  const anyErr = e as {
+    code?: unknown;
+    meta?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
 
   if (anyErr && typeof anyErr === "object" && anyErr.code === "P2002") {
     throw new ConflictError(
@@ -875,7 +1188,7 @@ export const projectsService = {
         name: data.name,
         clientName: data.clientName,
         startDate,
-        endDate,
+        endDate
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -896,7 +1209,9 @@ export const projectsService = {
     const current = await this.getById(id);
 
     const startDate =
-      data.startDate !== undefined ? normalizeDate(data.startDate) : current.startDate;
+      data.startDate !== undefined
+        ? normalizeDate(data.startDate)
+        : current.startDate;
 
     const endDate =
       data.endDate !== undefined
@@ -910,9 +1225,11 @@ export const projectsService = {
     try {
       return await projectsRepository.update(id, {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.clientName !== undefined ? { clientName: data.clientName } : {}),
+        ...(data.clientName !== undefined
+          ? { clientName: data.clientName }
+          : {}),
         ...(data.startDate !== undefined ? { startDate } : {}),
-        ...(data.endDate !== undefined ? { endDate } : {}),
+        ...(data.endDate !== undefined ? { endDate } : {})
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -922,7 +1239,7 @@ export const projectsService = {
   async remove(id: string) {
     await this.getById(id);
     await projectsRepository.delete(id);
-  },
+  }
 };
 ```
 
@@ -1057,7 +1374,6 @@ export const projectsWorkersService = {
 ```text
 === apps/api/src/modules/workers/workers.controller.ts ===
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { requireAuth } from "../../shared/middlewares/auth.js";
 import { parseOrThrow } from "../../shared/validation/zod.js";
 import {
   workerCreateBodySchema,
@@ -1071,8 +1387,6 @@ type ReqWithBody = FastifyRequest<{ Body: unknown }>;
 type ReqWithParams = FastifyRequest<{ Params: unknown }>;
 
 export async function create(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const body = parseOrThrow(workerCreateBodySchema, (req as ReqWithBody).body);
   const worker = await service.createWorker(body);
 
@@ -1098,8 +1412,6 @@ export async function getById(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function update(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params
@@ -1112,8 +1424,6 @@ export async function update(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function remove(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params
@@ -1214,13 +1524,23 @@ export async function remove(id: string): Promise<boolean> {
 === apps/api/src/modules/workers/workers.routes.ts ===
 import type { FastifyInstance } from "fastify";
 import * as controller from "./workers.controller.js";
+import { requireAuth } from "../../shared/middlewares/auth.js";
 
 export async function workersRoutes(app: FastifyInstance) {
   app.get("/workers", controller.list);
   app.get("/workers/:workerId", controller.getById);
-  app.post("/workers", controller.create);
-  app.patch("/workers/:workerId", controller.update);
-  app.delete("/workers/:workerId", controller.remove);
+
+  app.post("/workers", { preHandler: [requireAuth] }, controller.create);
+  app.patch(
+    "/workers/:workerId",
+    { preHandler: [requireAuth] },
+    controller.update
+  );
+  app.delete(
+    "/workers/:workerId",
+    { preHandler: [requireAuth] },
+    controller.remove
+  );
 }
 ```
 
@@ -1361,7 +1681,10 @@ export class InternalError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS", message: string) {
+  constructor(
+    code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS",
+    message: string
+  ) {
     super({ code, status: 409, message });
   }
 }
@@ -1445,18 +1768,18 @@ export type ErrorResponseDTO = {
 ```text
 === apps/api/src/shared/middlewares/auth.ts ===
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { UnauthorizedError } from "../errors/AppError";
+import { UnauthorizedError } from "../errors/AppError.js";
+import { isValidAccessToken } from "../../modules/auth/auth.service.js";
 
 export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
-  req.log.info({ step: "AUTH" }, "requireAuth");
-  const auth = req.headers.authorization ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const authHeader = req.headers.authorization ?? "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
 
-  if (!token || token !== "dev-token") {
+  if (!token || !isValidAccessToken(token)) {
     throw new UnauthorizedError();
   }
-
-  return;
 }
 ```
 
@@ -1515,35 +1838,34 @@ import prettierPlugin from "eslint-plugin-prettier";
 import tseslint from "typescript-eslint";
 
 export default [
-  { ignores: ["dist/**"] },
+  { ignores: ["dist/**", "node_modules/**", "src/**/*.js"] },
 
-  // ✅ Base JS
   js.configs.recommended,
-
-  // ✅ TypeScript + TSX (incluye parser)
   ...tseslint.configs.recommended,
+  prettier,
 
-  // Código del browser (React/Vite)
   {
-    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
-        ...globals.browser, // document, fetch, window, etc.
+        ...globals.browser,
         ...globals.es2021
+      },
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
       }
     },
     plugins: {
       prettier: prettierPlugin
     },
     rules: {
-      ...prettier.rules,
       "prettier/prettier": "error"
     }
   },
 
-  // Archivos de config (Node)
   {
     files: ["*.{js,cjs,mjs}", "vite.config.*", "eslint.config.*"],
     languageOptions: {
@@ -1569,7 +1891,7 @@ export default [
   "scripts": {
     "test": "echo \"(no tests yet)\"",
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier -w .",
@@ -1603,71 +1925,284 @@ export default [
 ```
 
 ```text
-=== apps/web/src/App.js ===
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
-import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
-export function App() {
-  return _jsx(BrowserRouter, {
-    children: _jsxs("div", {
-      style: { fontFamily: "system-ui", padding: 16 },
-      children: [
-        _jsx("nav", {
-          style: { display: "flex", gap: 12, marginBottom: 16 },
-          children: _jsx(Link, { to: "/projects", children: "Projects" })
-        }),
-        _jsxs(Routes, {
-          children: [
-            _jsx(Route, {
-              path: "/",
-              element: _jsx(Navigate, { to: "/projects", replace: true })
-            }),
-            _jsx(Route, {
-              path: "/projects",
-              element: _jsx(ProjectsListPage, {})
-            })
-          ]
-        })
-      ]
-    })
-  });
-}
-```
-
-```text
 === apps/web/src/App.tsx ===
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
+import { ProjectDetailPage } from "./features/projects/pages/ProjectDetailPage";
+import { LoginPage } from "./features/auth/pages/LoginPage";
+import { useAuth } from "./features/auth/context/AuthContext";
+
+function AppShell() {
+  const { isAuthenticated, logout } = useAuth();
+
+  return (
+    <div style={{ fontFamily: "system-ui", padding: 16 }}>
+      <nav
+        style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 16,
+          alignItems: "center"
+        }}
+      >
+        <Link to="/projects">Projects</Link>
+
+        <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
+          {isAuthenticated ? (
+            <>
+              <span>Authenticated</span>
+              <button onClick={logout}>Logout</button>
+            </>
+          ) : (
+            <Link to="/login">Login</Link>
+          )}
+        </div>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Navigate to="/projects" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/projects" element={<ProjectsListPage />} />
+        <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+      </Routes>
+    </div>
+  );
+}
 
 export function App() {
   return (
     <BrowserRouter>
-      <div style={{ fontFamily: "system-ui", padding: 16 }}>
-        <nav style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <Link to="/projects">Projects</Link>
-        </nav>
-
-        <Routes>
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-          <Route path="/projects" element={<ProjectsListPage />} />
-          {/* después agregas: <Route path="/projects/:projectId" ... /> */}
-        </Routes>
-      </div>
+      <AppShell />
     </BrowserRouter>
   );
 }
 ```
 
 ```text
-=== apps/web/src/features/projects/api/projectsApi.js ===
+=== apps/web/src/features/auth/api/authApi.ts ===
 import { http } from "@/shared/api/http";
-export const projectsApi = {
-  list: () => http.get("/projects"),
-  getById: (id) => http.get(`/projects/${id}`),
-  create: (data) => http.post("/projects", data),
-  update: (id, data) => http.patch(`/projects/${id}`, data),
-  remove: (id) => http.delete(`/projects/${id}`)
+import type { LoginRequestDTO, LoginResponseDTO } from "../types/auth";
+
+export const authApi = {
+  login: (data: LoginRequestDTO) =>
+    http.post<LoginResponseDTO>("/auth/login", data)
 };
+```
+
+```text
+=== apps/web/src/features/auth/context/AuthContext.tsx ===
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode
+} from "react";
+import { authApi } from "../api/authApi";
+import type { LoginRequestDTO } from "../types/auth";
+import { setHttpAuthToken } from "@/shared/api/http";
+
+type AuthContextValue = {
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (data: LoginRequestDTO) => Promise<void>;
+  logout: () => void;
+};
+
+const AUTH_STORAGE_KEY = "auth.token";
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+type Props = {
+  children: ReactNode;
+};
+
+export function AuthProvider({ children }: Props) {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem(AUTH_STORAGE_KEY);
+  });
+
+  useEffect(() => {
+    setHttpAuthToken(token);
+  }, [token]);
+
+  const login = useCallback(async (data: LoginRequestDTO) => {
+    const result = await authApi.login(data);
+    setToken(result.accessToken);
+    localStorage.setItem(AUTH_STORAGE_KEY, result.accessToken);
+    setHttpAuthToken(result.accessToken);
+  }, []);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    setHttpAuthToken(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      token,
+      isAuthenticated: !!token,
+      login,
+      logout
+    }),
+    [token, login, logout]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+
+  return context;
+}
+```
+
+```text
+=== apps/web/src/features/auth/pages/LoginPage.tsx ===
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "../context/AuthContext";
+import { isApiErrorResponse } from "../types/auth";
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required")
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+type LocationState = {
+  from?: string;
+};
+
+export function LoginPage() {
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [submitError, setSubmitError] = useState("");
+
+  const from =
+    ((location.state as LocationState | null)?.from ?? "/projects") ||
+    "/projects";
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: ""
+    }
+  });
+
+  if (isAuthenticated) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  async function onSubmit(values: LoginFormValues) {
+    setSubmitError("");
+
+    try {
+      await login(values);
+      navigate(from, { replace: true });
+    } catch (e: unknown) {
+      if (isApiErrorResponse(e) && e.error.code === "INVALID_CREDENTIALS") {
+        setSubmitError("Credenciales inválidas.");
+        return;
+      }
+
+      if (isApiErrorResponse(e) && e.error.code === "VALIDATION_ERROR") {
+        setSubmitError("Debes completar username y password.");
+        return;
+      }
+
+      setSubmitError("No se pudo iniciar sesión.");
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 420 }}>
+      <h1 style={{ marginBottom: 16 }}>Login</h1>
+
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        style={{ display: "grid", gap: 12 }}
+      >
+        <div style={{ display: "grid", gap: 6 }}>
+          <label htmlFor="username">Username</label>
+          <input id="username" {...register("username")} />
+          {errors.username ? (
+            <span style={{ color: "crimson" }}>{errors.username.message}</span>
+          ) : null}
+        </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          <label htmlFor="password">Password</label>
+          <input id="password" type="password" {...register("password")} />
+          {errors.password ? (
+            <span style={{ color: "crimson" }}>{errors.password.message}</span>
+          ) : null}
+        </div>
+
+        {submitError ? (
+          <div style={{ color: "crimson" }}>{submitError}</div>
+        ) : null}
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/auth/types/auth.ts ===
+export type LoginRequestDTO = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponseDTO = {
+  accessToken: string;
+  tokenType: "Bearer";
+  expiresIn: number;
+};
+
+export type AuthErrorResponseDTO = {
+  error: {
+    code: string;
+    message: string;
+    details?: { field: string; reason: string }[];
+    requestId?: string;
+  };
+};
+
+export function isAuthErrorResponse(
+  value: unknown
+): value is AuthErrorResponseDTO {
+  if (!value || typeof value !== "object") return false;
+  if (!("error" in value)) return false;
+
+  const maybeError = (value as { error?: unknown }).error;
+  if (!maybeError || typeof maybeError !== "object") return false;
+
+  return typeof (maybeError as { code?: unknown }).code === "string";
+}
 ```
 
 ```text
@@ -1682,18 +2217,35 @@ import type {
 
 export const projectsApi = {
   list: () => http.get<ProjectListResponseDTO>("/projects"),
+
   getById: (id: string) => http.get<ProjectResponseDTO>(`/projects/${id}`),
+
   create: (data: ProjectCreateDTO) =>
     http.post<ProjectResponseDTO>("/projects", data),
+
   update: (id: string, data: ProjectUpdateDTO) =>
     http.patch<ProjectResponseDTO>(`/projects/${id}`, data),
-  remove: (id: string) => http.delete<void>(`/projects/${id}`)
+
+  remove: (id: string) => http.delete<void>(`/projects/${id}`),
+
+  assignWorker: (projectId: string, workerId: string) =>
+    http.post<void>(`/projects/${projectId}/workers`, { workerId }),
+
+  unassignWorker: (projectId: string, workerId: string) =>
+    http.delete<void>(`/projects/${projectId}/workers/${workerId}`)
 };
 ```
 
 ```text
-=== apps/web/src/features/projects/components/ProjectModal.js ===
-"use strict";
+=== apps/web/src/features/projects/api/workersApi.ts ===
+import { http } from "@/shared/api/http";
+import type { WorkerDTO } from "../types/projects";
+
+export type WorkersListResponseDTO = { items: WorkerDTO[] };
+
+export const workersApi = {
+  list: () => http.get<WorkersListResponseDTO>("/workers")
+};
 ```
 
 ```text
@@ -1702,16 +2254,53 @@ export const projectsApi = {
 ```
 
 ```text
-=== apps/web/src/features/projects/hooks/useProjects.js ===
+=== apps/web/src/features/projects/hooks/useProjectAssignments.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsApi } from "../api/projectsApi";
+
+export function useAssignWorker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { projectId: string; workerId: string }) =>
+      projectsApi.assignWorker(args.projectId, args.workerId),
+    onSuccess: async (_data, vars) => {
+      await qc.invalidateQueries({
+        queryKey: ["projects", "byId", vars.projectId]
+      });
+      await qc.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useUnassignWorker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { projectId: string; workerId: string }) =>
+      projectsApi.unassignWorker(args.projectId, args.workerId),
+    onSuccess: async (_data, vars) => {
+      await qc.invalidateQueries({
+        queryKey: ["projects", "byId", vars.projectId]
+      });
+      await qc.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+```
+
+```text
+=== apps/web/src/features/projects/hooks/useProjectById.ts ===
 import { useQuery } from "@tanstack/react-query";
 import { projectsApi } from "../api/projectsApi";
-export function useProjects() {
-  return useQuery({
-    queryKey: ["projects", "list"],
-    queryFn: () => projectsApi.list(),
+import type { ProjectResponseDTO } from "../types/projects";
+
+export function useProjectById(projectId: string) {
+  return useQuery<ProjectResponseDTO>({
+    queryKey: ["projects", "byId", projectId],
+    queryFn: () => projectsApi.getById(projectId),
     staleTime: 10_000,
     retry: 0,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: !!projectId
   });
 }
 ```
@@ -1734,32 +2323,296 @@ export function useProjects() {
 ```
 
 ```text
-=== apps/web/src/features/projects/pages/ProjectsListPage.js ===
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useProjects } from "../hooks/useProjects";
-export function ProjectsListPage() {
-  const { data, isLoading } = useProjects();
-  if (isLoading) return _jsx("div", { children: "Loading..." });
-  if (!data?.items.length) return _jsx("div", { children: "No projects yet" });
-  return _jsx("div", {
-    children: data.items.map((p) =>
-      _jsxs(
-        "div",
-        {
-          children: [
-            _jsx("h3", { children: p.name }),
-            _jsx("p", { children: p.clientName })
-          ]
-        },
-        p.id
-      )
-    )
+=== apps/web/src/features/projects/hooks/useWorkers.ts ===
+import { useQuery } from "@tanstack/react-query";
+import { workersApi } from "../api/workersApi";
+import type { WorkersListResponseDTO } from "../api/workersApi";
+
+export function useWorkers() {
+  return useQuery<WorkersListResponseDTO>({
+    queryKey: ["workers", "list"],
+    queryFn: () => workersApi.list(),
+    staleTime: 10_000,
+    retry: 0,
+    refetchOnWindowFocus: false
   });
 }
 ```
 
 ```text
+=== apps/web/src/features/projects/pages/ProjectDetailPage.tsx ===
+import { useMemo, useState } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useProjectById } from "../hooks/useProjectById";
+import { useWorkers } from "../hooks/useWorkers";
+import {
+  useAssignWorker,
+  useUnassignWorker
+} from "../hooks/useProjectAssignments";
+import type { WorkerDTO } from "../types/projects";
+import { isApiErrorResponse } from "../types/projects";
+import { useAuth } from "@/features/auth/context/AuthContext";
+
+export function ProjectDetailPage() {
+  const { projectId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  const { data: project, isLoading, error } = useProjectById(projectId);
+  const { data: workersList } = useWorkers();
+  const assign = useAssignWorker();
+  const unassign = useUnassignWorker();
+
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
+  const [assignErrorMsg, setAssignErrorMsg] = useState<string>("");
+  const [actionMessage, setActionMessage] = useState<string>("");
+
+  const assignedIds = useMemo(
+    () => new Set((project?.workers ?? []).map((w) => w.id)),
+    [project]
+  );
+
+  const availableWorkers: WorkerDTO[] = useMemo(() => {
+    const all = workersList?.items ?? [];
+    return all.filter((w) => !assignedIds.has(w.id));
+  }, [workersList, assignedIds]);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading project</div>;
+  if (!project) return <div>Project not found</div>;
+
+  function goToLoginWithReturn() {
+    navigate("/login", {
+      state: { from: location.pathname }
+    });
+  }
+
+  async function onAssign() {
+    if (!project) return;
+
+    setAssignErrorMsg("");
+    setActionMessage("");
+
+    if (!isAuthenticated) {
+      setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
+      goToLoginWithReturn();
+      return;
+    }
+
+    if (!selectedWorkerId) return;
+
+    try {
+      await assign.mutateAsync({
+        projectId: project.id,
+        workerId: selectedWorkerId
+      });
+      setIsAssignOpen(false);
+      setSelectedWorkerId("");
+    } catch (e: unknown) {
+      if (
+        isApiErrorResponse(e) &&
+        e.error.code === "ASSIGNMENT_ALREADY_EXISTS"
+      ) {
+        setAssignErrorMsg("Este trabajador ya está asignado a este proyecto.");
+        return;
+      }
+
+      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+        setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
+        goToLoginWithReturn();
+        return;
+      }
+
+      setAssignErrorMsg("No se pudo asignar el trabajador.");
+    }
+  }
+
+  async function onUnassign(workerId: string) {
+    if (!project) return;
+
+    setActionMessage("");
+
+    if (!isAuthenticated) {
+      setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
+      goToLoginWithReturn();
+      return;
+    }
+
+    try {
+      await unassign.mutateAsync({ projectId: project.id, workerId });
+    } catch (e: unknown) {
+      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+        setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
+        goToLoginWithReturn();
+        return;
+      }
+
+      setActionMessage("No se pudo desasignar el trabajador.");
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <Link to="/projects">← Back</Link>
+      </div>
+
+      <h2 style={{ margin: 0 }}>{project.name}</h2>
+      <p style={{ marginTop: 6 }}>
+        <strong>Client:</strong> {project.clientName}
+      </p>
+      <p style={{ marginTop: 6 }}>
+        <strong>Dates:</strong> {project.startDate}{" "}
+        {project.endDate ? `→ ${project.endDate}` : ""}
+      </p>
+
+      {!isAuthenticated ? (
+        <div style={{ marginTop: 12, color: "#555" }}>
+          Debes iniciar sesión para gestionar asignaciones.
+        </div>
+      ) : null}
+
+      {actionMessage ? (
+        <div style={{ marginTop: 12, color: "crimson" }}>{actionMessage}</div>
+      ) : null}
+
+      <div
+        style={{
+          marginTop: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 12
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Assigned workers</h3>
+
+        {isAuthenticated ? (
+          <button onClick={() => setIsAssignOpen(true)}>Assign worker</button>
+        ) : (
+          <button onClick={goToLoginWithReturn} title="Debes iniciar sesión">
+            Assign worker
+          </button>
+        )}
+      </div>
+
+      {!project.workers.length ? (
+        <div style={{ marginTop: 12 }}>No workers assigned yet</div>
+      ) : (
+        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {project.workers.map((w) => (
+            <div
+              key={w.id}
+              style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600 }}>{w.name}</div>
+                  <div style={{ fontSize: 14, opacity: 0.8 }}>
+                    {w.role} · {w.seniority}
+                  </div>
+                </div>
+
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => onUnassign(w.id)}
+                    disabled={unassign.isPending}
+                    title="Unassign"
+                  >
+                    {unassign.isPending ? "..." : "Unassign"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isAssignOpen && isAuthenticated && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16
+          }}
+          onClick={() => setIsAssignOpen(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              width: 480,
+              maxWidth: "100%",
+              borderRadius: 12,
+              padding: 16
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Assign worker</h3>
+
+            {!availableWorkers.length ? (
+              <div style={{ marginBottom: 12 }}>
+                No available workers to assign.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                <label style={{ fontSize: 14 }}>Worker</label>
+                <select
+                  value={selectedWorkerId}
+                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                >
+                  <option value="">Select...</option>
+                  {availableWorkers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} — {w.role} ({w.seniority})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {assignErrorMsg ? (
+              <div style={{ color: "crimson", marginBottom: 12 }}>
+                {assignErrorMsg}
+              </div>
+            ) : null}
+
+            <div
+              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+            >
+              <button onClick={() => setIsAssignOpen(false)}>Cancel</button>
+              <button
+                onClick={onAssign}
+                disabled={
+                  !selectedWorkerId ||
+                  assign.isPending ||
+                  !availableWorkers.length
+                }
+              >
+                {assign.isPending ? "Assigning..." : "Assign"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+```text
 === apps/web/src/features/projects/pages/ProjectsListPage.tsx ===
+import { Link } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
 
 export function ProjectsListPage() {
@@ -1771,31 +2624,24 @@ export function ProjectsListPage() {
   return (
     <div>
       {data.items.map((p) => (
-        <div key={p.id}>
-          <h3>{p.name}</h3>
-          <p>{p.clientName}</p>
+        <div
+          key={p.id}
+          style={{
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            marginBottom: 12
+          }}
+        >
+          <h3 style={{ margin: 0 }}>
+            <Link to={`/projects/${p.id}`}>{p.name}</Link>
+          </h3>
+          <p style={{ margin: "6px 0 0 0" }}>{p.clientName}</p>
         </div>
       ))}
     </div>
   );
 }
-```
-
-```text
-=== apps/web/src/features/projects/schemas/projectForm.schema.js ===
-import { z } from "zod";
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-export const projectFormSchema = z
-  .object({
-    name: z.string().min(1),
-    clientName: z.string().min(1),
-    startDate: z.string().regex(isoDateRegex),
-    endDate: z.string().regex(isoDateRegex).optional()
-  })
-  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    path: ["endDate"],
-    message: "endDate must be greater than or equal to startDate"
-  });
 ```
 
 ```text
@@ -1818,19 +2664,21 @@ export const projectFormSchema = z
 ```
 
 ```text
-=== apps/web/src/features/projects/types/projects.js ===
-export {};
-```
-
-```text
 === apps/web/src/features/projects/types/projects.ts ===
+export type WorkerDTO = {
+  id: string;
+  name: string;
+  role: string;
+  seniority: "junior" | "semi-senior" | "senior";
+};
+
 export type ProjectResponseDTO = {
   id: string;
   name: string;
   clientName: string;
   startDate: string; // YYYY-MM-DD
   endDate?: string;
-  workers: [];
+  workers: WorkerDTO[];
 };
 
 export type ProjectListResponseDTO = {
@@ -1846,97 +2694,56 @@ export type ProjectCreateDTO = {
 
 export type ProjectUpdateDTO = Partial<ProjectCreateDTO>;
 
-export type WorkerDTO = {
-  id: string;
-  name: string;
-  role: string;
-  seniority: string;
+export type ApiErrorResponseDTO = {
+  error: {
+    code: string;
+    message: string;
+    details?: { field: string; reason: string }[];
+    requestId?: string;
+  };
 };
 
-export type ProjectDTO = {
-  id: string;
-  name: string;
-  clientName: string;
-  startDate: string;
-  endDate?: string;
-  workers: WorkerDTO[];
-};
+export function isApiErrorResponse(e: unknown): e is ApiErrorResponseDTO {
+  if (!e || typeof e !== "object") return false;
+  if (!("error" in e)) return false;
 
-export type ProjectsListDTO = {
-  items: ProjectDTO[];
-};
-```
+  const maybeError = (e as { error?: unknown }).error;
+  if (!maybeError || typeof maybeError !== "object") return false;
 
-```text
-=== apps/web/src/main.js ===
-import { jsx as _jsx } from "react/jsx-runtime";
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { App } from "./App";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const queryClient = new QueryClient();
-ReactDOM.createRoot(document.getElementById("root")).render(
-  _jsx(React.StrictMode, {
-    children: _jsx(QueryClientProvider, {
-      client: queryClient,
-      children: _jsx(App, {})
-    })
-  })
-);
+  return typeof (maybeError as { code?: unknown }).code === "string";
+}
 ```
 
 ```text
 === apps/web/src/main.tsx ===
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { App } from "./App";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { App } from "./App";
+import { AuthProvider } from "./features/auth/context/AuthContext";
 
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );
 ```
 
 ```text
-=== apps/web/src/shared/api/http.js ===
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
-async function request(method, path, body, init) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    ...init
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw (
-      data ?? {
-        error: { code: "HTTP_ERROR", message: `HTTP ${res.status}` }
-      }
-    );
-  }
-  return data;
-}
-export const http = {
-  get: (path, init) => request("GET", path, undefined, init),
-  post: (path, body, init) => request("POST", path, body, init),
-  patch: (path, body, init) => request("PATCH", path, body, init),
-  delete: (path, init) => request("DELETE", path, undefined, init)
-};
-```
-
-```text
 === apps/web/src/shared/api/http.ts ===
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
+
+let authToken: string | null = null;
+
+export function setHttpAuthToken(token: string | null) {
+  authToken = token;
+}
 
 async function request<T>(
   method: string,
@@ -1944,14 +2751,21 @@ async function request<T>(
   body?: unknown,
   init?: RequestInit
 ): Promise<T> {
+  const headers = new Headers(init?.headers);
+
+  if (body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    ...init
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined
   });
 
   const data = (await res.json().catch(() => null)) as T | null;
@@ -1971,10 +2785,13 @@ async function request<T>(
 export const http = {
   get: <T>(path: string, init?: RequestInit) =>
     request<T>("GET", path, undefined, init),
+
   post: <T>(path: string, body: unknown, init?: RequestInit) =>
     request<T>("POST", path, body, init),
+
   patch: <T>(path: string, body: unknown, init?: RequestInit) =>
     request<T>("PATCH", path, body, init),
+
   delete: <T>(path: string, init?: RequestInit) =>
     request<T>("DELETE", path, undefined, init)
 };
@@ -1993,12 +2810,40 @@ export const http = {
     "jsx": "react-jsx",
     "baseUrl": ".",
     "types": ["vite/client"],
+    "noEmit": true,
     "paths": {
       "@/*": ["src/*"]
     }
   },
   "include": ["src", "vite.config.ts"]
 }
+```
+
+```text
+=== apps/web/vite.config.js ===
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src")
+    }
+  }
+});
 ```
 
 ```text
@@ -2075,7 +2920,7 @@ export default defineConfig({
 === project_context.md ===
 # Project Context Package
 
-- Generated at: 2026-03-05T00:21:41-03:00
+- Generated at: 2026-03-06T19:29:19-03:00
 - Root: `.` (current directory)
 
 ## Rules Used
@@ -2158,44 +3003,328 @@ export default defineConfig({
 │   └── web/
 │       ├── src/
 │       │   ├── features/
+│       │   │   ├── auth/
+│       │   │   │   ├── api/
+│       │   │   │   │   └── authApi.ts
+│       │   │   │   ├── context/
+│       │   │   │   │   └── AuthContext.tsx
+│       │   │   │   ├── pages/
+│       │   │   │   │   └── LoginPage.tsx
+│       │   │   │   └── types/
+│       │   │   │       └── auth.ts
 │       │   │   └── projects/
 │       │   │       ├── api/
-│       │   │       │   ├── projectsApi.js
-│       │   │       │   └── projectsApi.ts
+│       │   │       │   ├── projectsApi.ts
+│       │   │       │   └── workersApi.ts
 │       │   │       ├── components/
-│       │   │       │   ├── ProjectModal.js
 │       │   │       │   └── ProjectModal.tsx
 │       │   │       ├── hooks/
-│       │   │       │   ├── useProjects.js
-│       │   │       │   └── useProjects.ts
+│       │   │       │   ├── useProjectAssignments.ts
+│       │   │       │   ├── useProjectById.ts
+│       │   │       │   ├── useProjects.ts
+│       │   │       │   └── useWorkers.ts
 │       │   │       ├── pages/
-│       │   │       │   ├── ProjectsListPage.js
+│       │   │       │   ├── ProjectDetailPage.tsx
 │       │   │       │   └── ProjectsListPage.tsx
 │       │   │       ├── schemas/
-│       │   │       │   ├── projectForm.schema.js
 │       │   │       │   └── projectForm.schema.ts
 │       │   │       └── types/
-│       │   │           ├── projects.js
 │       │   │           └── projects.ts
 │       │   ├── shared/
 │       │   │   └── api/
-│       │   │       ├── http.js
 │       │   │       └── http.ts
-│       │   ├── App.js
 │       │   ├── App.tsx
-│       │   ├── main.js
 │       │   ├── main.tsx
 │       │   └── vite-env.d.ts
 │       ├── eslint.config.js
 │       ├── package.json
 │       ├── tsconfig.json
+│       ├── vite.config.js
 │       └── vite.config.ts
+├── README.md
 ├── package.json
 ├── project_context.md
 └── tsconfig.base.json
 ```
 
 ## File Contents
+
+```text
+=== README.md ===
+
+# Projects Workers Monorepo
+
+Fullstack technical project implementing **Workers CRUD** and **Projects CRUD** using a **contract‑first approach** with **TypeScript**.
+
+The repository is structured as a monorepo containing a backend API and a frontend web application.
+
+---
+
+# Architecture
+
+Monorepo structure:
+
+```
+apps/
+  api/    -> Fastify + TypeScript backend API
+  web/    -> React + Vite frontend
+```
+
+Backend stack:
+
+- Node.js
+- Fastify
+- TypeScript
+- Prisma ORM
+- SQLite
+- Zod validation
+
+Frontend stack:
+
+- React
+- TypeScript
+- Vite
+- React Query
+- React Hook Form
+- Zod
+
+---
+
+# API Base URL
+
+```
+http://localhost:3000/api/v1
+```
+
+---
+
+# Features Implemented
+
+## Base Infrastructure
+
+- Request ID middleware
+- Global error handler
+- Standard error format
+- Health endpoint
+- Auth middleware (dev token)
+
+Endpoint:
+
+```
+GET /api/v1/health
+```
+
+Response:
+
+```
+{
+  "status": "ok",
+  "requestId": "..."
+}
+```
+
+---
+
+# Authentication
+
+Temporary development login.
+
+```
+POST /api/v1/auth/login
+```
+
+Request:
+
+```
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+Response:
+
+```
+{
+  "accessToken": "dev-token",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
+}
+```
+
+Use token in requests:
+
+```
+Authorization: Bearer dev-token
+```
+
+---
+
+# Workers CRUD
+
+Model:
+
+```
+Worker
+- id (UUID)
+- name
+- role
+- seniority (enum)
+```
+
+Endpoints:
+
+```
+POST   /workers
+GET    /workers
+GET    /workers/:workerId
+PATCH  /workers/:workerId
+DELETE /workers/:workerId
+```
+
+Example create:
+
+```
+POST /workers
+{
+  "name": "John",
+  "role": "Backend Developer",
+  "seniority": "junior"
+}
+```
+
+---
+
+# Projects CRUD
+
+Model:
+
+```
+Project
+- id (UUID)
+- name
+- clientName
+- startDate (YYYY-MM-DD)
+- endDate (optional)
+```
+
+Validation rules:
+
+- startDate format must be `YYYY-MM-DD`
+- if endDate exists → `endDate >= startDate`
+
+Endpoints:
+
+```
+POST   /projects
+GET    /projects
+GET    /projects/:projectId
+PATCH  /projects/:projectId
+DELETE /projects/:projectId
+```
+
+Unique constraint:
+
+```
+(name, clientName, startDate)
+```
+
+Duplicate creation returns:
+
+```
+409 PROJECT_ALREADY_EXISTS
+```
+
+---
+
+# Error Format
+
+All errors follow the same contract.
+
+```
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation error",
+    "details": [],
+    "requestId": "..."
+  }
+}
+```
+
+---
+
+# Running the Project
+
+Install dependencies:
+
+```
+npm install
+```
+
+Start API:
+
+```
+npm run api:dev
+```
+
+Run migrations:
+
+```
+npm run api:prisma:migrate:reset
+```
+
+---
+
+# Quick API Test
+
+Health:
+
+```
+curl http://localhost:3000/api/v1/health
+```
+
+Login:
+
+```
+curl -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
+```
+
+Create Worker:
+
+```
+curl -X POST http://localhost:3000/api/v1/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"W1","role":"Dev","seniority":"junior"}'
+```
+
+Create Project:
+
+```
+curl -X POST http://localhost:3000/api/v1/projects -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"P1","clientName":"C1","startDate":"2026-03-01"}'
+```
+
+---
+
+# Next Steps
+
+Upcoming slice:
+
+**Project ↔ Worker Assignments**
+
+Endpoints to implement:
+
+```
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
+```
+
+This will allow assigning workers to projects.
+
+---
+
+# Author
+
+Technical implementation created for a fullstack TypeScript coding challenge.
+```
 
 ```text
 === apps/api/.env.example ===
@@ -2217,18 +3346,7 @@ export default [
   },
 
   js.configs.recommended,
-
   ...tseslint.configs.recommended,
-
-  // ✅ forzamos root del tsconfig en ESTE workspace
-  {
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: import.meta.dirname
-      }
-    }
-  },
-
   prettierConfig,
 
   {
@@ -2236,7 +3354,21 @@ export default [
       prettier: prettierPlugin
     },
     rules: {
-      "prettier/prettier": "error"
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" }
+      ]
+    }
+  },
+
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
+      }
     }
   }
 ];
@@ -2258,7 +3390,6 @@ export default [
     "lint": "eslint .",
     "format": "prettier -w .",
     "format:check": "prettier -c .",
-
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "prisma:migrate:reset": "prisma migrate reset --force --skip-seed --schema prisma/schema.prisma",
@@ -2485,6 +3616,10 @@ import type { FastifyError, FastifyInstance } from "fastify";
 import { AppError } from "../../shared/errors/AppError.js";
 import type { ErrorResponseDTO } from "../../shared/http/types.js";
 
+type ErrorWithStatusCode = Error & {
+  statusCode?: number;
+};
+
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err: FastifyError | Error, req, reply) => {
     const requestId = String(req.id);
@@ -2494,27 +3629,25 @@ export function registerErrorHandler(app: FastifyInstance) {
     let message = "Internal error";
     let details: ErrorResponseDTO["error"]["details"] | undefined;
 
-    // 1) Errores de dominio (los tuyos)
     if (err instanceof AppError) {
       status = err.status;
       code = err.code;
       message = err.message;
       details = err.details;
-    }
-    // 2) Errores propios de Fastify (JSON inválido, etc.)
-    else if (typeof (err as any)?.statusCode === "number") {
-      status = (err as any).statusCode;
+    } else {
+      const fastifyErr = err as ErrorWithStatusCode;
 
-      // Si quieres mapear más fino después, aquí es el lugar.
-      code = status >= 500 ? "INTERNAL_ERROR" : "VALIDATION_ERROR";
-      message = err.message || (status >= 500 ? "Internal error" : "Validation error");
+      if (typeof fastifyErr.statusCode === "number") {
+        status = fastifyErr.statusCode;
+        code = status >= 500 ? "INTERNAL_ERROR" : "VALIDATION_ERROR";
+        message =
+          err.message ||
+          (status >= 500 ? "Internal error" : "Validation error");
 
-      // Logueamos igual, pero no lo tratamos como 500
-      app.log.warn({ err, requestId }, "Non-domain error");
-    }
-    // 3) Unknown -> 500
-    else {
-      app.log.error({ err, requestId }, "Unhandled error");
+        app.log.warn({ err, requestId }, "Non-domain error");
+      } else {
+        app.log.error({ err, requestId }, "Unhandled error");
+      }
     }
 
     const payload: ErrorResponseDTO = {
@@ -2522,8 +3655,8 @@ export function registerErrorHandler(app: FastifyInstance) {
         code,
         message,
         ...(details ? { details } : {}),
-        requestId,
-      },
+        requestId
+      }
     };
 
     reply.status(status).send(payload);
@@ -2635,7 +3768,7 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
 ```text
 === apps/api/src/modules/auth/auth.routes.ts ===
 import type { FastifyInstance } from "fastify";
-import * as controller from "./auth.controller";
+import * as controller from "./auth.controller.js";
 
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", controller.login);
@@ -2656,14 +3789,29 @@ export type LoginBody = z.infer<typeof loginBodySchema>;
 
 ```text
 === apps/api/src/modules/auth/auth.service.ts ===
-import { InvalidCredentialsError } from "../../shared/errors/AppError";
-import type { LoginBody } from "./auth.schemas";
+import { InvalidCredentialsError } from "../../shared/errors/AppError.js";
+import type { LoginBody } from "./auth.schemas.js";
+
+const AUTH_USERNAME = "admin";
+const AUTH_PASSWORD = "admin123";
+const AUTH_ACCESS_TOKEN = "dev-token";
+const AUTH_TOKEN_TYPE = "Bearer" as const;
+const AUTH_EXPIRES_IN = 3600;
 
 export function login(body: LoginBody) {
-  if (body.username !== "admin" || body.password !== "admin123") {
+  if (body.username !== AUTH_USERNAME || body.password !== AUTH_PASSWORD) {
     throw new InvalidCredentialsError();
   }
-  return { accessToken: "dev-token", tokenType: "Bearer", expiresIn: 3600 };
+
+  return {
+    accessToken: AUTH_ACCESS_TOKEN,
+    tokenType: AUTH_TOKEN_TYPE,
+    expiresIn: AUTH_EXPIRES_IN
+  };
+}
+
+export function isValidAccessToken(token: string) {
+  return token === AUTH_ACCESS_TOKEN;
 }
 ```
 
@@ -2747,7 +3895,7 @@ export type WorkerInProjectDTO = {
   id: string;
   name: string;
   role: string;
-  seniority: string;
+  seniority: "junior" | "semi-senior" | "senior";
 };
 
 export type ProjectResponseDTO = {
@@ -2763,6 +3911,7 @@ export type ProjectResponseDTO = {
 ```text
 === apps/api/src/modules/projects/projects.mappers.ts ===
 import type { Prisma } from "@prisma/client";
+import { toDtoSeniority } from "../workers/workers.mappers.js";
 
 export type ProjectWithWorkers = Prisma.ProjectGetPayload<{
   include: { workers: { include: { worker: true } } };
@@ -2780,7 +3929,7 @@ export const mapProjectToDTO = (project: ProjectWithWorkers) => ({
     id: pw.worker.id,
     name: pw.worker.name,
     role: pw.worker.role,
-    seniority: pw.worker.seniority
+    seniority: toDtoSeniority(pw.worker.seniority)
   }))
 });
 ```
@@ -2899,7 +4048,11 @@ export const projectIdParamsSchema = z.object({
 === apps/api/src/modules/projects/projects.service.ts ===
 import type { ProjectCreateDTO, ProjectUpdateDTO } from "./projects.dtos";
 import { projectsRepository } from "./projects.repository";
-import { ValidationError, NotFoundError, ConflictError } from "../../shared/errors/AppError.js";
+import {
+  ValidationError,
+  NotFoundError,
+  ConflictError
+} from "../../shared/errors/AppError.js";
 
 /**
  * Valida YYYY-MM-DD y devuelve Date (UTC 00:00:00.000Z)
@@ -2926,7 +4079,12 @@ function assertEndAfterStart(start: Date, end: Date | null) {
 
 // Prisma P2002 -> ConflictError (shape check, no instanceof)
 function prismaUniqueToConflict(e: unknown): never {
-  const anyErr = e as { code?: unknown; meta?: unknown; name?: unknown; message?: unknown };
+  const anyErr = e as {
+    code?: unknown;
+    meta?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
 
   if (anyErr && typeof anyErr === "object" && anyErr.code === "P2002") {
     throw new ConflictError(
@@ -2950,7 +4108,7 @@ export const projectsService = {
         name: data.name,
         clientName: data.clientName,
         startDate,
-        endDate,
+        endDate
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -2971,7 +4129,9 @@ export const projectsService = {
     const current = await this.getById(id);
 
     const startDate =
-      data.startDate !== undefined ? normalizeDate(data.startDate) : current.startDate;
+      data.startDate !== undefined
+        ? normalizeDate(data.startDate)
+        : current.startDate;
 
     const endDate =
       data.endDate !== undefined
@@ -2985,9 +4145,11 @@ export const projectsService = {
     try {
       return await projectsRepository.update(id, {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.clientName !== undefined ? { clientName: data.clientName } : {}),
+        ...(data.clientName !== undefined
+          ? { clientName: data.clientName }
+          : {}),
         ...(data.startDate !== undefined ? { startDate } : {}),
-        ...(data.endDate !== undefined ? { endDate } : {}),
+        ...(data.endDate !== undefined ? { endDate } : {})
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -2997,7 +4159,7 @@ export const projectsService = {
   async remove(id: string) {
     await this.getById(id);
     await projectsRepository.delete(id);
-  },
+  }
 };
 ```
 
@@ -3132,7 +4294,6 @@ export const projectsWorkersService = {
 ```text
 === apps/api/src/modules/workers/workers.controller.ts ===
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { requireAuth } from "../../shared/middlewares/auth.js";
 import { parseOrThrow } from "../../shared/validation/zod.js";
 import {
   workerCreateBodySchema,
@@ -3146,8 +4307,6 @@ type ReqWithBody = FastifyRequest<{ Body: unknown }>;
 type ReqWithParams = FastifyRequest<{ Params: unknown }>;
 
 export async function create(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const body = parseOrThrow(workerCreateBodySchema, (req as ReqWithBody).body);
   const worker = await service.createWorker(body);
 
@@ -3173,8 +4332,6 @@ export async function getById(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function update(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params
@@ -3187,8 +4344,6 @@ export async function update(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function remove(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params
@@ -3289,13 +4444,23 @@ export async function remove(id: string): Promise<boolean> {
 === apps/api/src/modules/workers/workers.routes.ts ===
 import type { FastifyInstance } from "fastify";
 import * as controller from "./workers.controller.js";
+import { requireAuth } from "../../shared/middlewares/auth.js";
 
 export async function workersRoutes(app: FastifyInstance) {
   app.get("/workers", controller.list);
   app.get("/workers/:workerId", controller.getById);
-  app.post("/workers", controller.create);
-  app.patch("/workers/:workerId", controller.update);
-  app.delete("/workers/:workerId", controller.remove);
+
+  app.post("/workers", { preHandler: [requireAuth] }, controller.create);
+  app.patch(
+    "/workers/:workerId",
+    { preHandler: [requireAuth] },
+    controller.update
+  );
+  app.delete(
+    "/workers/:workerId",
+    { preHandler: [requireAuth] },
+    controller.remove
+  );
 }
 ```
 
@@ -3436,7 +4601,10 @@ export class InternalError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS", message: string) {
+  constructor(
+    code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS",
+    message: string
+  ) {
     super({ code, status: 409, message });
   }
 }
@@ -3520,18 +4688,18 @@ export type ErrorResponseDTO = {
 ```text
 === apps/api/src/shared/middlewares/auth.ts ===
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { UnauthorizedError } from "../errors/AppError";
+import { UnauthorizedError } from "../errors/AppError.js";
+import { isValidAccessToken } from "../../modules/auth/auth.service.js";
 
 export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
-  req.log.info({ step: "AUTH" }, "requireAuth");
-  const auth = req.headers.authorization ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const authHeader = req.headers.authorization ?? "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
 
-  if (!token || token !== "dev-token") {
+  if (!token || !isValidAccessToken(token)) {
     throw new UnauthorizedError();
   }
-
-  return;
 }
 ```
 
@@ -3590,35 +4758,34 @@ import prettierPlugin from "eslint-plugin-prettier";
 import tseslint from "typescript-eslint";
 
 export default [
-  { ignores: ["dist/**"] },
+  { ignores: ["dist/**", "node_modules/**", "src/**/*.js"] },
 
-  // ✅ Base JS
   js.configs.recommended,
-
-  // ✅ TypeScript + TSX (incluye parser)
   ...tseslint.configs.recommended,
+  prettier,
 
-  // Código del browser (React/Vite)
   {
-    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
-        ...globals.browser, // document, fetch, window, etc.
+        ...globals.browser,
         ...globals.es2021
+      },
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
       }
     },
     plugins: {
       prettier: prettierPlugin
     },
     rules: {
-      ...prettier.rules,
       "prettier/prettier": "error"
     }
   },
 
-  // Archivos de config (Node)
   {
     files: ["*.{js,cjs,mjs}", "vite.config.*", "eslint.config.*"],
     languageOptions: {
@@ -3644,7 +4811,7 @@ export default [
   "scripts": {
     "test": "echo \"(no tests yet)\"",
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier -w .",
@@ -3678,71 +4845,284 @@ export default [
 ```
 
 ```text
-=== apps/web/src/App.js ===
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
-import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
-export function App() {
-  return _jsx(BrowserRouter, {
-    children: _jsxs("div", {
-      style: { fontFamily: "system-ui", padding: 16 },
-      children: [
-        _jsx("nav", {
-          style: { display: "flex", gap: 12, marginBottom: 16 },
-          children: _jsx(Link, { to: "/projects", children: "Projects" })
-        }),
-        _jsxs(Routes, {
-          children: [
-            _jsx(Route, {
-              path: "/",
-              element: _jsx(Navigate, { to: "/projects", replace: true })
-            }),
-            _jsx(Route, {
-              path: "/projects",
-              element: _jsx(ProjectsListPage, {})
-            })
-          ]
-        })
-      ]
-    })
-  });
-}
-```
-
-```text
 === apps/web/src/App.tsx ===
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
+import { ProjectDetailPage } from "./features/projects/pages/ProjectDetailPage";
+import { LoginPage } from "./features/auth/pages/LoginPage";
+import { useAuth } from "./features/auth/context/AuthContext";
+
+function AppShell() {
+  const { isAuthenticated, logout } = useAuth();
+
+  return (
+    <div style={{ fontFamily: "system-ui", padding: 16 }}>
+      <nav
+        style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 16,
+          alignItems: "center"
+        }}
+      >
+        <Link to="/projects">Projects</Link>
+
+        <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
+          {isAuthenticated ? (
+            <>
+              <span>Authenticated</span>
+              <button onClick={logout}>Logout</button>
+            </>
+          ) : (
+            <Link to="/login">Login</Link>
+          )}
+        </div>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Navigate to="/projects" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/projects" element={<ProjectsListPage />} />
+        <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+      </Routes>
+    </div>
+  );
+}
 
 export function App() {
   return (
     <BrowserRouter>
-      <div style={{ fontFamily: "system-ui", padding: 16 }}>
-        <nav style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <Link to="/projects">Projects</Link>
-        </nav>
-
-        <Routes>
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-          <Route path="/projects" element={<ProjectsListPage />} />
-          {/* después agregas: <Route path="/projects/:projectId" ... /> */}
-        </Routes>
-      </div>
+      <AppShell />
     </BrowserRouter>
   );
 }
 ```
 
 ```text
-=== apps/web/src/features/projects/api/projectsApi.js ===
+=== apps/web/src/features/auth/api/authApi.ts ===
 import { http } from "@/shared/api/http";
-export const projectsApi = {
-  list: () => http.get("/projects"),
-  getById: (id) => http.get(`/projects/${id}`),
-  create: (data) => http.post("/projects", data),
-  update: (id, data) => http.patch(`/projects/${id}`, data),
-  remove: (id) => http.delete(`/projects/${id}`)
+import type { LoginRequestDTO, LoginResponseDTO } from "../types/auth";
+
+export const authApi = {
+  login: (data: LoginRequestDTO) =>
+    http.post<LoginResponseDTO>("/auth/login", data)
 };
+```
+
+```text
+=== apps/web/src/features/auth/context/AuthContext.tsx ===
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode
+} from "react";
+import { authApi } from "../api/authApi";
+import type { LoginRequestDTO } from "../types/auth";
+import { setHttpAuthToken } from "@/shared/api/http";
+
+type AuthContextValue = {
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (data: LoginRequestDTO) => Promise<void>;
+  logout: () => void;
+};
+
+const AUTH_STORAGE_KEY = "auth.token";
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+type Props = {
+  children: ReactNode;
+};
+
+export function AuthProvider({ children }: Props) {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem(AUTH_STORAGE_KEY);
+  });
+
+  useEffect(() => {
+    setHttpAuthToken(token);
+  }, [token]);
+
+  const login = useCallback(async (data: LoginRequestDTO) => {
+    const result = await authApi.login(data);
+    setToken(result.accessToken);
+    localStorage.setItem(AUTH_STORAGE_KEY, result.accessToken);
+    setHttpAuthToken(result.accessToken);
+  }, []);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    setHttpAuthToken(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      token,
+      isAuthenticated: !!token,
+      login,
+      logout
+    }),
+    [token, login, logout]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+
+  return context;
+}
+```
+
+```text
+=== apps/web/src/features/auth/pages/LoginPage.tsx ===
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "../context/AuthContext";
+import { isApiErrorResponse } from "../types/auth";
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required")
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+type LocationState = {
+  from?: string;
+};
+
+export function LoginPage() {
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [submitError, setSubmitError] = useState("");
+
+  const from =
+    ((location.state as LocationState | null)?.from ?? "/projects") ||
+    "/projects";
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: ""
+    }
+  });
+
+  if (isAuthenticated) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  async function onSubmit(values: LoginFormValues) {
+    setSubmitError("");
+
+    try {
+      await login(values);
+      navigate(from, { replace: true });
+    } catch (e: unknown) {
+      if (isApiErrorResponse(e) && e.error.code === "INVALID_CREDENTIALS") {
+        setSubmitError("Credenciales inválidas.");
+        return;
+      }
+
+      if (isApiErrorResponse(e) && e.error.code === "VALIDATION_ERROR") {
+        setSubmitError("Debes completar username y password.");
+        return;
+      }
+
+      setSubmitError("No se pudo iniciar sesión.");
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 420 }}>
+      <h1 style={{ marginBottom: 16 }}>Login</h1>
+
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        style={{ display: "grid", gap: 12 }}
+      >
+        <div style={{ display: "grid", gap: 6 }}>
+          <label htmlFor="username">Username</label>
+          <input id="username" {...register("username")} />
+          {errors.username ? (
+            <span style={{ color: "crimson" }}>{errors.username.message}</span>
+          ) : null}
+        </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          <label htmlFor="password">Password</label>
+          <input id="password" type="password" {...register("password")} />
+          {errors.password ? (
+            <span style={{ color: "crimson" }}>{errors.password.message}</span>
+          ) : null}
+        </div>
+
+        {submitError ? (
+          <div style={{ color: "crimson" }}>{submitError}</div>
+        ) : null}
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/auth/types/auth.ts ===
+export type LoginRequestDTO = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponseDTO = {
+  accessToken: string;
+  tokenType: "Bearer";
+  expiresIn: number;
+};
+
+export type AuthErrorResponseDTO = {
+  error: {
+    code: string;
+    message: string;
+    details?: { field: string; reason: string }[];
+    requestId?: string;
+  };
+};
+
+export function isAuthErrorResponse(
+  value: unknown
+): value is AuthErrorResponseDTO {
+  if (!value || typeof value !== "object") return false;
+  if (!("error" in value)) return false;
+
+  const maybeError = (value as { error?: unknown }).error;
+  if (!maybeError || typeof maybeError !== "object") return false;
+
+  return typeof (maybeError as { code?: unknown }).code === "string";
+}
 ```
 
 ```text
@@ -3757,18 +5137,35 @@ import type {
 
 export const projectsApi = {
   list: () => http.get<ProjectListResponseDTO>("/projects"),
+
   getById: (id: string) => http.get<ProjectResponseDTO>(`/projects/${id}`),
+
   create: (data: ProjectCreateDTO) =>
     http.post<ProjectResponseDTO>("/projects", data),
+
   update: (id: string, data: ProjectUpdateDTO) =>
     http.patch<ProjectResponseDTO>(`/projects/${id}`, data),
-  remove: (id: string) => http.delete<void>(`/projects/${id}`)
+
+  remove: (id: string) => http.delete<void>(`/projects/${id}`),
+
+  assignWorker: (projectId: string, workerId: string) =>
+    http.post<void>(`/projects/${projectId}/workers`, { workerId }),
+
+  unassignWorker: (projectId: string, workerId: string) =>
+    http.delete<void>(`/projects/${projectId}/workers/${workerId}`)
 };
 ```
 
 ```text
-=== apps/web/src/features/projects/components/ProjectModal.js ===
-"use strict";
+=== apps/web/src/features/projects/api/workersApi.ts ===
+import { http } from "@/shared/api/http";
+import type { WorkerDTO } from "../types/projects";
+
+export type WorkersListResponseDTO = { items: WorkerDTO[] };
+
+export const workersApi = {
+  list: () => http.get<WorkersListResponseDTO>("/workers")
+};
 ```
 
 ```text
@@ -3777,16 +5174,53 @@ export const projectsApi = {
 ```
 
 ```text
-=== apps/web/src/features/projects/hooks/useProjects.js ===
+=== apps/web/src/features/projects/hooks/useProjectAssignments.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsApi } from "../api/projectsApi";
+
+export function useAssignWorker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { projectId: string; workerId: string }) =>
+      projectsApi.assignWorker(args.projectId, args.workerId),
+    onSuccess: async (_data, vars) => {
+      await qc.invalidateQueries({
+        queryKey: ["projects", "byId", vars.projectId]
+      });
+      await qc.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useUnassignWorker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { projectId: string; workerId: string }) =>
+      projectsApi.unassignWorker(args.projectId, args.workerId),
+    onSuccess: async (_data, vars) => {
+      await qc.invalidateQueries({
+        queryKey: ["projects", "byId", vars.projectId]
+      });
+      await qc.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+```
+
+```text
+=== apps/web/src/features/projects/hooks/useProjectById.ts ===
 import { useQuery } from "@tanstack/react-query";
 import { projectsApi } from "../api/projectsApi";
-export function useProjects() {
-  return useQuery({
-    queryKey: ["projects", "list"],
-    queryFn: () => projectsApi.list(),
+import type { ProjectResponseDTO } from "../types/projects";
+
+export function useProjectById(projectId: string) {
+  return useQuery<ProjectResponseDTO>({
+    queryKey: ["projects", "byId", projectId],
+    queryFn: () => projectsApi.getById(projectId),
     staleTime: 10_000,
     retry: 0,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: !!projectId
   });
 }
 ```
@@ -3809,204 +5243,291 @@ export function useProjects() {
 ```
 
 ```text
-=== apps/web/src/features/projects/pages/ProjectsListPage.js ===
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useProjects } from "../hooks/useProjects";
-export function ProjectsListPage() {
-  const { data, isLoading } = useProjects();
-  if (isLoading) return _jsx("div", { children: "Loading..." });
-  if (!data?.items.length) return _jsx("div", { children: "No projects yet" });
-  return _jsx("div", {
-    children: data.items.map((p) =>
-      _jsxs(
-        "div",
-        {
-          children: [
-            _jsx("h3", { children: p.name }),
-            _jsx("p", { children: p.clientName })
-          ]
-        },
-        p.id
-      )
-    )
+=== apps/web/src/features/projects/hooks/useWorkers.ts ===
+import { useQuery } from "@tanstack/react-query";
+import { workersApi } from "../api/workersApi";
+import type { WorkersListResponseDTO } from "../api/workersApi";
+
+export function useWorkers() {
+  return useQuery<WorkersListResponseDTO>({
+    queryKey: ["workers", "list"],
+    queryFn: () => workersApi.list(),
+    staleTime: 10_000,
+    retry: 0,
+    refetchOnWindowFocus: false
   });
 }
 ```
 
 ```text
-=== apps/web/src/features/projects/pages/ProjectsListPage.tsx ===
-import { useProjects } from "../hooks/useProjects";
+=== apps/web/src/features/projects/pages/ProjectDetailPage.tsx ===
+import { useMemo, useState } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useProjectById } from "../hooks/useProjectById";
+import { useWorkers } from "../hooks/useWorkers";
+import {
+  useAssignWorker,
+  useUnassignWorker
+} from "../hooks/useProjectAssignments";
+import type { WorkerDTO } from "../types/projects";
+import { isApiErrorResponse } from "../types/projects";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
-export function ProjectsListPage() {
-  const { data, isLoading } = useProjects();
+export function ProjectDetailPage() {
+  const { projectId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  const { data: project, isLoading, error } = useProjectById(projectId);
+  const { data: workersList } = useWorkers();
+  const assign = useAssignWorker();
+  const unassign = useUnassignWorker();
+
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
+  const [assignErrorMsg, setAssignErrorMsg] = useState<string>("");
+  const [actionMessage, setActionMessage] = useState<string>("");
+
+  const assignedIds = useMemo(
+    () => new Set((project?.workers ?? []).map((w) => w.id)),
+    [project]
+  );
+
+  const availableWorkers: WorkerDTO[] = useMemo(() => {
+    const all = workersList?.items ?? [];
+    return all.filter((w) => !assignedIds.has(w.id));
+  }, [workersList, assignedIds]);
 
   if (isLoading) return <div>Loading...</div>;
-  if (!data?.items.length) return <div>No projects yet</div>;
+  if (error) return <div>Error loading project</div>;
+  if (!project) return <div>Project not found</div>;
+
+  function goToLoginWithReturn() {
+    navigate("/login", {
+      state: { from: location.pathname }
+    });
+  }
+
+  async function onAssign() {
+    if (!project) return;
+
+    setAssignErrorMsg("");
+    setActionMessage("");
+
+    if (!isAuthenticated) {
+      setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
+      goToLoginWithReturn();
+      return;
+    }
+
+    if (!selectedWorkerId) return;
+
+    try {
+      await assign.mutateAsync({
+        projectId: project.id,
+        workerId: selectedWorkerId
+      });
+      setIsAssignOpen(false);
+      setSelectedWorkerId("");
+    } catch (e: unknown) {
+      if (
+        isApiErrorResponse(e) &&
+        e.error.code === "ASSIGNMENT_ALREADY_EXISTS"
+      ) {
+        setAssignErrorMsg("Este trabajador ya está asignado a este proyecto.");
+        return;
+      }
+
+      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+        setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
+        goToLoginWithReturn();
+        return;
+      }
+
+      setAssignErrorMsg("No se pudo asignar el trabajador.");
+    }
+  }
+
+  async function onUnassign(workerId: string) {
+    if (!project) return;
+
+    setActionMessage("");
+
+    if (!isAuthenticated) {
+      setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
+      goToLoginWithReturn();
+      return;
+    }
+
+    try {
+      await unassign.mutateAsync({ projectId: project.id, workerId });
+    } catch (e: unknown) {
+      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+        setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
+        goToLoginWithReturn();
+        return;
+      }
+
+      setActionMessage("No se pudo desasignar el trabajador.");
+    }
+  }
 
   return (
     <div>
-      {data.items.map((p) => (
-        <div key={p.id}>
-          <h3>{p.name}</h3>
-          <p>{p.clientName}</p>
+      <div style={{ marginBottom: 12 }}>
+        <Link to="/projects">← Back</Link>
+      </div>
+
+      <h2 style={{ margin: 0 }}>{project.name}</h2>
+      <p style={{ marginTop: 6 }}>
+        <strong>Client:</strong> {project.clientName}
+      </p>
+      <p style={{ marginTop: 6 }}>
+        <strong>Dates:</strong> {project.startDate}{" "}
+        {project.endDate ? `→ ${project.endDate}` : ""}
+      </p>
+
+      {!isAuthenticated ? (
+        <div style={{ marginTop: 12, color: "#555" }}>
+          Debes iniciar sesión para gestionar asignaciones.
         </div>
-      ))}
+      ) : null}
+
+      {actionMessage ? (
+        <div style={{ marginTop: 12, color: "crimson" }}>{actionMessage}</div>
+      ) : null}
+
+      <div
+        style={{
+          marginTop: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 12
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Assigned workers</h3>
+
+        {isAuthenticated ? (
+          <button onClick={() => setIsAssignOpen(true)}>Assign worker</button>
+        ) : (
+          <button onClick={goToLoginWithReturn} title="Debes iniciar sesión">
+            Assign worker
+          </button>
+        )}
+      </div>
+
+      {!project.workers.length ? (
+        <div style={{ marginTop: 12 }}>No workers assigned yet</div>
+      ) : (
+        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {project.workers.map((w) => (
+            <div
+              key={w.id}
+              style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600 }}>{w.name}</div>
+                  <div style={{ fontSize: 14, opacity: 0.8 }}>
+                    {w.role} · {w.seniority}
+                  </div>
+                </div>
+
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => onUnassign(w.id)}
+                    disabled={unassign.isPending}
+                    title="Unassign"
+                  >
+                    {unassign.isPending ? "..." : "Unassign"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isAssignOpen && isAuthenticated && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16
+          }}
+          onClick={() => setIsAssignOpen(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              width: 480,
+              maxWidth: "100%",
+              borderRadius: 12,
+              padding: 16
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Assign worker</h3>
+
+            {!availableWorkers.length ? (
+              <div style={{ marginBottom: 12 }}>
+                No available workers to assign.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                <label style={{ fontSize: 14 }}>Worker</label>
+                <select
+                  value={selectedWorkerId}
+                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                >
+                  <option value="">Select...</option>
+                  {availableWorkers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} — {w.role} ({w.seniority})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {assignErrorMsg ? (
+              <div style={{ color: "crimson", marginBottom: 12 }}>
+                {assignErrorMsg}
+              </div>
+            ) : null}
+
+            <div
+              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+            >
+              <button onClick={() => setIsAssignOpen(false)}>Cancel</button>
+              <button
+                onClick={onAssign}
+                disabled={
+                  !selectedWorkerId ||
+                  assign.isPending ||
+                  !availableWorkers.length
+                }
+              >
+                {assign.isPending ? "Assigning..." : "Assign"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-```
-
-```text
-=== apps/web/src/features/projects/schemas/projectForm.schema.js ===
-import { z } from "zod";
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-export const projectFormSchema = z
-  .object({
-    name: z.string().min(1),
-    clientName: z.string().min(1),
-    startDate: z.string().regex(isoDateRegex),
-    endDate: z.string().regex(isoDateRegex).optional()
-  })
-  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    path: ["endDate"],
-    message: "endDate must be greater than or equal to startDate"
-  });
-```
-
-```text
-=== apps/web/src/features/projects/schemas/projectForm.schema.ts ===
-import { z } from "zod";
-
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-export const projectFormSchema = z
-  .object({
-    name: z.string().min(1),
-    clientName: z.string().min(1),
-    startDate: z.string().regex(isoDateRegex),
-    endDate: z.string().regex(isoDateRegex).optional()
-  })
-  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    path: ["endDate"],
-    message: "endDate must be greater than or equal to startDate"
-  });
-```
-
-```text
-=== apps/web/src/features/projects/types/projects.js ===
-export {};
-```
-
-```text
-=== apps/web/src/features/projects/types/projects.ts ===
-export type ProjectResponseDTO = {
-  id: string;
-  name: string;
-  clientName: string;
-  startDate: string; // YYYY-MM-DD
-  endDate?: string;
-  workers: [];
-};
-
-export type ProjectListResponseDTO = {
-  items: ProjectResponseDTO[];
-};
-
-export type ProjectCreateDTO = {
-  name: string;
-  clientName: string;
-  startDate: string;
-  endDate?: string;
-};
-
-export type ProjectUpdateDTO = Partial<ProjectCreateDTO>;
-
-export type WorkerDTO = {
-  id: string;
-  name: string;
-  role: string;
-  seniority: string;
-};
-
-export type ProjectDTO = {
-  id: string;
-  name: string;
-  clientName: string;
-  startDate: string;
-  endDate?: string;
-  workers: WorkerDTO[];
-};
-
-export type ProjectsListDTO = {
-  items: ProjectDTO[];
-};
-```
-
-```text
-=== apps/web/src/main.js ===
-import { jsx as _jsx } from "react/jsx-runtime";
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { App } from "./App";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const queryClient = new QueryClient();
-ReactDOM.createRoot(document.getElementById("root")).render(
-  _jsx(React.StrictMode, {
-    children: _jsx(QueryClientProvider, {
-      client: queryClient,
-      children: _jsx(App, {})
-    })
-  })
-);
-```
-
-```text
-=== apps/web/src/main.tsx ===
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { App } from "./App";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-const queryClient = new QueryClient();
-
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </React.StrictMode>
-);
-```
-
-```text
-=== apps/web/src/shared/api/http.js ===
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
-async function request(method, path, body, init) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    ...init
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw (
-      data ?? {
-        error: { code: "HTTP_ERROR", message: `HTTP ${res.status}` }
-      }
-    );
-  }
-  return data;
-}
-export const http = {
-  get: (path, init) => request("GET", path, undefined, init),
-  post: (path, body, init) => request("POST", path, body, init),
-  patch: (path, body, init) => request("PATCH", path, body, init),
-  delete: (path, init) => request("DELETE", path, undefined, init)
-};
 ```
 
 ```text

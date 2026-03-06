@@ -10,3 +10,6 @@ apps/*/.env
 *.db
 *.db-journal
 apps/api/prisma/dev.db
+make_context.py
+project_context.md
+project_tree.txt

@@ -1,6 +1,10 @@
 import type { ProjectCreateDTO, ProjectUpdateDTO } from "./projects.dtos";
 import { projectsRepository } from "./projects.repository";
-import { ValidationError, NotFoundError, ConflictError } from "../../shared/errors/AppError.js";
+import {
+  ValidationError,
+  NotFoundError,
+  ConflictError
+} from "../../shared/errors/AppError.js";
 
 /**
  * Valida YYYY-MM-DD y devuelve Date (UTC 00:00:00.000Z)
@@ -27,7 +31,12 @@ function assertEndAfterStart(start: Date, end: Date | null) {
 
 // Prisma P2002 -> ConflictError (shape check, no instanceof)
 function prismaUniqueToConflict(e: unknown): never {
-  const anyErr = e as { code?: unknown; meta?: unknown; name?: unknown; message?: unknown };
+  const anyErr = e as {
+    code?: unknown;
+    meta?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
 
   if (anyErr && typeof anyErr === "object" && anyErr.code === "P2002") {
     throw new ConflictError(
@@ -51,7 +60,7 @@ export const projectsService = {
         name: data.name,
         clientName: data.clientName,
         startDate,
-        endDate,
+        endDate
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -72,7 +81,9 @@ export const projectsService = {
     const current = await this.getById(id);
 
     const startDate =
-      data.startDate !== undefined ? normalizeDate(data.startDate) : current.startDate;
+      data.startDate !== undefined
+        ? normalizeDate(data.startDate)
+        : current.startDate;
 
     const endDate =
       data.endDate !== undefined
@@ -86,9 +97,11 @@ export const projectsService = {
     try {
       return await projectsRepository.update(id, {
         ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.clientName !== undefined ? { clientName: data.clientName } : {}),
+        ...(data.clientName !== undefined
+          ? { clientName: data.clientName }
+          : {}),
         ...(data.startDate !== undefined ? { startDate } : {}),
-        ...(data.endDate !== undefined ? { endDate } : {}),
+        ...(data.endDate !== undefined ? { endDate } : {})
       });
     } catch (e) {
       prismaUniqueToConflict(e);
@@ -98,5 +111,5 @@ export const projectsService = {
   async remove(id: string) {
     await this.getById(id);
     await projectsRepository.delete(id);
-  },
+  }
 };

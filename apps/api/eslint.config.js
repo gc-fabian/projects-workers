@@ -9,18 +9,7 @@ export default [
   },
 
   js.configs.recommended,
-
   ...tseslint.configs.recommended,
-
-  // ✅ forzamos root del tsconfig en ESTE workspace
-  {
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: import.meta.dirname
-      }
-    }
-  },
-
   prettierConfig,
 
   {
@@ -28,7 +17,21 @@ export default [
       prettier: prettierPlugin
     },
     rules: {
-      "prettier/prettier": "error"
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" }
+      ]
+    }
+  },
+
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: ["./tsconfig.json"]
+      }
     }
   }
 ];

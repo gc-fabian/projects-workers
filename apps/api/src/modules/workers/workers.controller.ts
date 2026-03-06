@@ -1,5 +1,4 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { requireAuth } from "../../shared/middlewares/auth.js";
 import { parseOrThrow } from "../../shared/validation/zod.js";
 import {
   workerCreateBodySchema,
@@ -13,8 +12,6 @@ type ReqWithBody = FastifyRequest<{ Body: unknown }>;
 type ReqWithParams = FastifyRequest<{ Params: unknown }>;
 
 export async function create(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const body = parseOrThrow(workerCreateBodySchema, (req as ReqWithBody).body);
   const worker = await service.createWorker(body);
 
@@ -40,8 +37,6 @@ export async function getById(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function update(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params
@@ -54,8 +49,6 @@ export async function update(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function remove(req: FastifyRequest, reply: FastifyReply) {
-  await requireAuth(req, reply);
-
   const params = parseOrThrow(
     workerIdParamsSchema,
     (req as ReqWithParams).params

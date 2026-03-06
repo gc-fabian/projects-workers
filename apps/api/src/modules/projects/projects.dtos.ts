@@ -20,7 +20,7 @@ export type WorkerInProjectDTO = {
   id: string;
   name: string;
   role: string;
-  seniority: string;
+  seniority: "junior" | "semi-senior" | "senior";
 };
 
 export type ProjectResponseDTO = {

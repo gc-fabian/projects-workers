@@ -50,7 +50,10 @@ export class InternalError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS", message: string) {
+  constructor(
+    code: "ASSIGNMENT_ALREADY_EXISTS" | "PROJECT_ALREADY_EXISTS",
+    message: string
+  ) {
     super({ code, status: 409, message });
   }
 }

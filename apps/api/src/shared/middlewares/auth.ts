@@ -1,14 +1,14 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { UnauthorizedError } from "../errors/AppError";
+import { UnauthorizedError } from "../errors/AppError.js";
+import { isValidAccessToken } from "../../modules/auth/auth.service.js";
 
 export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
-  req.log.info({ step: "AUTH" }, "requireAuth");
-  const auth = req.headers.authorization ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const authHeader = req.headers.authorization ?? "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
 
-  if (!token || token !== "dev-token") {
+  if (!token || !isValidAccessToken(token)) {
     throw new UnauthorizedError();
   }
-
-  return;
 }
