@@ -24,7 +24,9 @@
     "api:prisma:migrate:dev": "npm --prefix apps/api run prisma:migrate:dev",
     "api:prisma:migrate:reset": "npm --prefix apps/api run prisma:migrate:reset",
     "api:prisma:migrate:deploy": "npm --prefix apps/api run prisma:migrate:deploy",
-    "api:prisma:studio": "npm --prefix apps/api run prisma:studio"
+    "api:prisma:studio": "npm --prefix apps/api run prisma:studio",
+
+    "api:seed": "npm --prefix apps/api run seed"
   },
   "devDependencies": {
     "eslint": "^10.0.2",

@@ -1,528 +1,287 @@
 # Projects Workers Monorepo
 
-Fullstack technical project implementing a contract-first monorepo with:
+Fullstack technical project implementing a **contract-first
+architecture** using a TypeScript monorepo.
 
-- Authentication
-- Workers CRUD
-- Projects CRUD
-- Project ↔ Worker assignments
-- Frontend auth-aware UI for protected mutations
+Features implemented:
 
-The repository is structured as a monorepo containing a backend API and a frontend web application.
+-   Authentication (simple token auth)
+-   Workers CRUD
+-   Projects CRUD
+-   Project ↔ Worker assignments
+-   Auth-aware frontend UI
 
----
+------------------------------------------------------------------------
 
 # Architecture
 
 Monorepo structure:
 
-```text
-apps/
-  api/    -> Fastify + TypeScript backend API
-  web/    -> React + Vite frontend
+    apps/
+     ├── api      → Fastify backend
+     └── web      → React frontend
+
+## Stack
+
+Backend
+
+-   Node.js
+-   Fastify
+-   Prisma
+-   SQLite
+-   Zod validation
+
+Frontend
+
+-   React
+-   Vite
+-   React Query
+-   React Hook Form
+-   Zod
+
+------------------------------------------------------------------------
+
+# Quick Start (under 5 minutes)
+
+## 1 Install dependencies
+
+``` bash
+npm install
 ```
 
-Backend stack:
+------------------------------------------------------------------------
 
-- Node.js
-- Fastify
-- TypeScript
-- Prisma ORM
-- SQLite
-- Zod validation
+## 2 Setup environment
 
-Frontend stack:
+Backend
 
-- React
-- TypeScript
-- Vite
-- React Query
-- React Hook Form
-- Zod
-- React Router
-
----
-
-# API Base URL
-
-```text
-http://localhost:3000/api/v1
+``` bash
+cp apps/api/.env.example apps/api/.env
 ```
 
----
+Frontend
 
-# Features Implemented
-
-## Base Infrastructure
-
-- Request ID support via Fastify `req.id`
-- `x-request-id` response header on every response
-- Global error handler
-- Standard error format
-- Health endpoint
-- Auth middleware for protected write operations
-
-Endpoint:
-
-```http
-GET /api/v1/health
+``` bash
+cp apps/web/.env.example apps/web/.env
 ```
 
-Response:
+------------------------------------------------------------------------
 
-```json
-{
-  "status": "ok",
-  "requestId": "..."
-}
+## 3 Run migrations
+
+``` bash
+npm --prefix apps/api run prisma:migrate:dev
 ```
 
----
+------------------------------------------------------------------------
 
-# Authentication
+## 4 Seed database
 
-Temporary hardcoded login for the technical challenge.
-
-```http
-POST /api/v1/auth/login
+``` bash
+npm run api:seed
 ```
 
-Request:
+------------------------------------------------------------------------
 
-```json
-{
-  "username": "admin",
-  "password": "admin123"
-}
+## 5 Run backend
+
+``` bash
+npm run api:dev
 ```
 
-Response:
+Backend runs at:
 
-```json
-{
-  "accessToken": "dev-token",
-  "tokenType": "Bearer",
-  "expiresIn": 3600
-}
+    http://localhost:3000
+
+------------------------------------------------------------------------
+
+## 6 Run frontend
+
+``` bash
+npm run web:dev
 ```
 
-Use token in protected requests:
+Frontend runs at:
 
-```http
-Authorization: Bearer dev-token
-```
+    http://localhost:5173
 
-## Auth behavior
+------------------------------------------------------------------------
 
-Protected write endpoints require:
+# Credentials
 
-```http
-Authorization: Bearer <token>
-```
+    username: admin
+    password: admin123
 
-If token is missing or invalid:
+Access token returned:
 
-- `401 UNAUTHORIZED`
+    Authorization: Bearer dev-token
 
-If login credentials are invalid:
+------------------------------------------------------------------------
 
-- `401 INVALID_CREDENTIALS`
+# API Endpoints
 
-### Public endpoints
+## Auth
 
-These remain public:
+    POST /api/v1/auth/login
 
-```http
-GET /health
-GET /workers
-GET /workers/:workerId
-GET /projects
-GET /projects/:projectId
-```
+------------------------------------------------------------------------
 
-### Protected endpoints
+## Workers
 
-These require auth:
+    POST /workers
+    GET /workers
+    GET /workers/:workerId
+    PATCH /workers/:workerId
+    DELETE /workers/:workerId
 
-```http
-POST   /workers
-PATCH  /workers/:workerId
-DELETE /workers/:workerId
+------------------------------------------------------------------------
 
-POST   /projects
-PATCH  /projects/:projectId
-DELETE /projects/:projectId
+## Projects
 
-POST   /projects/:projectId/workers
-DELETE /projects/:projectId/workers/:workerId
-```
+    POST /projects
+    GET /projects
+    GET /projects/:projectId
+    PATCH /projects/:projectId
+    DELETE /projects/:projectId
 
----
+------------------------------------------------------------------------
 
-# Workers CRUD
+## Assignments
 
-Model:
+    POST /projects/:projectId/workers
+    DELETE /projects/:projectId/workers/:workerId
 
-```text
-Worker
-- id (UUID)
-- name
-- role
-- seniority (enum)
-```
+------------------------------------------------------------------------
 
-Endpoints:
+# Error Handling
 
-```http
-POST   /workers
-GET    /workers
-GET    /workers/:workerId
-PATCH  /workers/:workerId
-DELETE /workers/:workerId
-```
+Error format:
 
-Example create:
-
-```http
-POST /workers
-Authorization: Bearer dev-token
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "John",
-  "role": "Backend Developer",
-  "seniority": "junior"
-}
-```
-
----
-
-# Projects CRUD
-
-Model:
-
-```text
-Project
-- id (UUID)
-- name
-- clientName
-- startDate (YYYY-MM-DD)
-- endDate (optional)
-```
-
-Validation rules:
-
-- `startDate` format must be `YYYY-MM-DD`
-- if `endDate` exists, then `endDate >= startDate`
-
-Endpoints:
-
-```http
-POST   /projects
-GET    /projects
-GET    /projects/:projectId
-PATCH  /projects/:projectId
-DELETE /projects/:projectId
-```
-
-Unique constraint:
-
-```text
-(name, clientName, startDate)
-```
-
-Duplicate creation/update returns:
-
-```text
-409 PROJECT_ALREADY_EXISTS
-```
-
-Example create:
-
-```http
-POST /projects
-Authorization: Bearer dev-token
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "P1",
-  "clientName": "Client A",
-  "startDate": "2026-03-01"
-}
-```
-
----
-
-# Project ↔ Worker Assignments
-
-Assignments are modeled as an N:M relation between projects and workers.
-
-Endpoints:
-
-```http
-POST   /projects/:projectId/workers
-DELETE /projects/:projectId/workers/:workerId
-```
-
-Request example:
-
-```http
-POST /projects/:projectId/workers
-Authorization: Bearer dev-token
-Content-Type: application/json
-```
-
-```json
-{
-  "workerId": "..."
-}
-```
-
-Rules:
-
-- `404 NOT_FOUND` if project does not exist
-- `404 NOT_FOUND` if worker does not exist
-- `409 ASSIGNMENT_ALREADY_EXISTS` if the assignment already exists
-- `404 NOT_FOUND` on delete if assignment does not exist
-
-Project read DTOs already include assigned workers:
-
-```json
-{
-  "id": "...",
-  "name": "Project 1",
-  "clientName": "Client A",
-  "startDate": "2026-03-05",
-  "workers": [
-    {
-      "id": "...",
-      "name": "Worker 1",
-      "role": "Tech",
-      "seniority": "junior"
-    }
-  ]
-}
-```
-
----
-
-# Frontend Features
-
-The frontend includes:
-
-- public browsing of projects and workers
-- login page
-- auth provider with token persistence in `localStorage`
-- automatic Authorization header injection through shared `http` client
-- protected UI actions for create/update/delete
-- assignment and unassignment UI in project detail
-
-## Frontend auth behavior
-
-Without login:
-
-- lists remain visible
-- detail pages remain visible
-- write actions are hidden or redirect to login
-
-With login:
-
-- create/edit/delete actions become available
-- assignments can be created/removed
-- session persists across refresh via `localStorage`
-
-Logout:
-
-- clears token
-- returns UI to public/read-only mode
-
----
-
-# Error Format
-
-All errors follow the same contract.
-
-```json
+``` json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation error",
-    "details": [
-      {
-        "field": "fieldName",
-        "reason": "invalid_format"
-      }
-    ],
+    "code": "PROJECT_ALREADY_EXISTS",
+    "message": "Project already exists",
     "requestId": "..."
   }
 }
 ```
 
-Current project error codes:
+Examples:
 
-- `VALIDATION_ERROR`
-- `UNAUTHORIZED`
-- `INVALID_CREDENTIALS`
-- `NOT_FOUND`
-- `ASSIGNMENT_ALREADY_EXISTS`
-- `PROJECT_ALREADY_EXISTS`
-- `INTERNAL_ERROR`
+    409 PROJECT_ALREADY_EXISTS
+    409 ASSIGNMENT_ALREADY_EXISTS
+    404 NOT_FOUND
+    401 UNAUTHORIZED
 
----
+------------------------------------------------------------------------
 
-# Environment Files
+# Technical Decisions
 
-## Backend tracked example file
+## Contract-first DTO architecture
 
-Use this file for the repository:
+DTOs are shared between:
 
-```env
-PORT=3000
-HOST=0.0.0.0
-DATABASE_URL="file:./prisma/dev.db"
+-   controllers
+-   services
+-   frontend types
+
+Ensuring consistency between API and UI.
+
+------------------------------------------------------------------------
+
+## Zod Validation
+
+Used for:
+
+-   request body validation
+-   params validation
+-   frontend forms
+
+Ensures consistent validation logic.
+
+------------------------------------------------------------------------
+
+## Layered backend architecture
+
+    routes
+    controllers
+    services
+    repositories
+
+Promotes separation of concerns and testability.
+
+------------------------------------------------------------------------
+
+## React Query
+
+Used for:
+
+-   data fetching
+-   caching
+-   automatic refetching after mutations.
+
+------------------------------------------------------------------------
+
+# Scripts
+
+## Root scripts
+
+    npm run api:dev
+    npm run web:dev
+    npm run build
+    npm run lint
+    npm run format
+
+## API scripts
+
+    npm run prisma:migrate:dev
+    npm run prisma:studio
+    npm run seed
+
+------------------------------------------------------------------------
+
+# Seed Data
+
+The seed script creates:
+
+-   2 Projects
+-   4 Workers
+-   2 Project ↔ Worker assignments
+
+Run:
+
+``` bash
+npm run api:seed
 ```
 
-Recommended file path:
+------------------------------------------------------------------------
 
-```text
-apps/api/.env.example
-```
+# Project Structure
 
-## Local backend file (not committed)
+    apps/
+      api/
+        prisma/
+        src/
+          modules/
+            auth/
+            workers/
+            projects/
+          shared/
+      web/
+        src/
+          features/
+            auth/
+            projects/
 
-Create a local file for development:
-
-```text
-apps/api/.env
-```
-
-Example:
-
-```env
-PORT=3000
-HOST=0.0.0.0
-DATABASE_URL="file:./prisma/dev.db"
-```
-
-## Frontend optional local env
-
-If needed, create:
-
-```text
-apps/web/.env.local
-```
-
-Example:
-
-```env
-VITE_API_BASE_URL=/api/v1
-```
-
----
-
-# Running the Project
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run Prisma migrations/reset database:
-
-```bash
-npm run api:prisma:migrate:reset
-```
-
-Start API:
-
-```bash
-npm run api:dev
-```
-
-Start frontend:
-
-```bash
-npm run web:dev
-```
-
-Build full monorepo:
-
-```bash
-npm run build
-```
-
----
-
-# Quick API Test
-
-Health:
-
-```bash
-curl http://localhost:3000/api/v1/health
-```
-
-Login:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
-```
-
-Create Worker:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"W1","role":"Dev","seniority":"junior"}'
-```
-
-Create Project:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/projects -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"P1","clientName":"C1","startDate":"2026-03-01"}'
-```
-
-Assign Worker to Project:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/projects/<projectId>/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"workerId":"<workerId>"}'
-```
-
----
-
-# Current UI Routes
-
-Frontend routes currently available:
-
-```text
-/               -> redirects to /projects
-/login          -> login page
-/projects       -> projects list + create/edit/delete UI
-/projects/:id   -> project detail + assignment UI
-/workers        -> workers list + create/edit/delete UI
-```
-
----
+------------------------------------------------------------------------
 
 # Notes
 
-This project intentionally uses a simple hardcoded auth flow because it is a technical challenge implementation.
+This project intentionally keeps authentication simple (hardcoded
+credentials and token) to focus on:
 
-It does **not** include:
-
-- JWT signing/verification
-- refresh tokens
-- cookies
-- backend sessions
-- RBAC / roles
-- complex auth infrastructure
-
-The goal is to keep the solution minimal, contract-first, and consistent with the project architecture.
-
----
-
-# Author
-
-Technical implementation created for a fullstack TypeScript coding challenge.
+-   API design
+-   Validation
+-   Layered architecture
+-   Frontend integration

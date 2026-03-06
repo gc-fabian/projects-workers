@@ -1,6 +1,6 @@
 # Project Context Package
 
-- Generated at: 2026-03-06T19:29:19-03:00
+- Generated at: 2026-03-06T20:36:56-03:00
 - Root: `.` (current directory)
 
 ## Rules Used
@@ -97,17 +97,22 @@
 │       │   │       │   ├── projectsApi.ts
 │       │   │       │   └── workersApi.ts
 │       │   │       ├── components/
-│       │   │       │   └── ProjectModal.tsx
+│       │   │       │   ├── ProjectModal.tsx
+│       │   │       │   └── WorkerModal.tsx
 │       │   │       ├── hooks/
 │       │   │       │   ├── useProjectAssignments.ts
 │       │   │       │   ├── useProjectById.ts
+│       │   │       │   ├── useProjectMutations.ts
 │       │   │       │   ├── useProjects.ts
+│       │   │       │   ├── useWorkerMutations.ts
 │       │   │       │   └── useWorkers.ts
 │       │   │       ├── pages/
 │       │   │       │   ├── ProjectDetailPage.tsx
-│       │   │       │   └── ProjectsListPage.tsx
+│       │   │       │   ├── ProjectsListPage.tsx
+│       │   │       │   └── WorkersListPage.tsx
 │       │   │       ├── schemas/
-│       │   │       │   └── projectForm.schema.ts
+│       │   │       │   ├── projectForm.schema.ts
+│       │   │       │   └── workerForm.schema.ts
 │       │   │       └── types/
 │       │   │           └── projects.ts
 │       │   ├── shared/
@@ -116,6 +121,7 @@
 │       │   ├── App.tsx
 │       │   ├── main.tsx
 │       │   └── vite-env.d.ts
+│       ├── .env.example
 │       ├── eslint.config.js
 │       ├── package.json
 │       ├── tsconfig.json
@@ -131,10 +137,15 @@
 
 ```text
 === README.md ===
-
 # Projects Workers Monorepo
 
-Fullstack technical project implementing **Workers CRUD** and **Projects CRUD** using a **contract‑first approach** with **TypeScript**.
+Fullstack technical project implementing a contract-first monorepo with:
+
+- Authentication
+- Workers CRUD
+- Projects CRUD
+- Project ↔ Worker assignments
+- Frontend auth-aware UI for protected mutations
 
 The repository is structured as a monorepo containing a backend API and a frontend web application.
 
@@ -144,7 +155,7 @@ The repository is structured as a monorepo containing a backend API and a fronte
 
 Monorepo structure:
 
-```
+```text
 apps/
   api/    -> Fastify + TypeScript backend API
   web/    -> React + Vite frontend
@@ -167,12 +178,13 @@ Frontend stack:
 - React Query
 - React Hook Form
 - Zod
+- React Router
 
 ---
 
 # API Base URL
 
-```
+```text
 http://localhost:3000/api/v1
 ```
 
@@ -182,21 +194,22 @@ http://localhost:3000/api/v1
 
 ## Base Infrastructure
 
-- Request ID middleware
+- Request ID support via Fastify `req.id`
+- `x-request-id` response header on every response
 - Global error handler
 - Standard error format
 - Health endpoint
-- Auth middleware (dev token)
+- Auth middleware for protected write operations
 
 Endpoint:
 
-```
+```http
 GET /api/v1/health
 ```
 
 Response:
 
-```
+```json
 {
   "status": "ok",
   "requestId": "..."
@@ -207,15 +220,15 @@ Response:
 
 # Authentication
 
-Temporary development login.
+Temporary hardcoded login for the technical challenge.
 
-```
+```http
 POST /api/v1/auth/login
 ```
 
 Request:
 
-```
+```json
 {
   "username": "admin",
   "password": "admin123"
@@ -224,7 +237,7 @@ Request:
 
 Response:
 
-```
+```json
 {
   "accessToken": "dev-token",
   "tokenType": "Bearer",
@@ -232,10 +245,55 @@ Response:
 }
 ```
 
-Use token in requests:
+Use token in protected requests:
 
-```
+```http
 Authorization: Bearer dev-token
+```
+
+## Auth behavior
+
+Protected write endpoints require:
+
+```http
+Authorization: Bearer <token>
+```
+
+If token is missing or invalid:
+
+- `401 UNAUTHORIZED`
+
+If login credentials are invalid:
+
+- `401 INVALID_CREDENTIALS`
+
+### Public endpoints
+
+These remain public:
+
+```http
+GET /health
+GET /workers
+GET /workers/:workerId
+GET /projects
+GET /projects/:projectId
+```
+
+### Protected endpoints
+
+These require auth:
+
+```http
+POST   /workers
+PATCH  /workers/:workerId
+DELETE /workers/:workerId
+
+POST   /projects
+PATCH  /projects/:projectId
+DELETE /projects/:projectId
+
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
 ```
 
 ---
@@ -244,7 +302,7 @@ Authorization: Bearer dev-token
 
 Model:
 
-```
+```text
 Worker
 - id (UUID)
 - name
@@ -254,7 +312,7 @@ Worker
 
 Endpoints:
 
-```
+```http
 POST   /workers
 GET    /workers
 GET    /workers/:workerId
@@ -264,8 +322,13 @@ DELETE /workers/:workerId
 
 Example create:
 
-```
+```http
 POST /workers
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
 {
   "name": "John",
   "role": "Backend Developer",
@@ -279,7 +342,7 @@ POST /workers
 
 Model:
 
-```
+```text
 Project
 - id (UUID)
 - name
@@ -290,12 +353,12 @@ Project
 
 Validation rules:
 
-- startDate format must be `YYYY-MM-DD`
-- if endDate exists → `endDate >= startDate`
+- `startDate` format must be `YYYY-MM-DD`
+- if `endDate` exists, then `endDate >= startDate`
 
 Endpoints:
 
-```
+```http
 POST   /projects
 GET    /projects
 GET    /projects/:projectId
@@ -305,15 +368,116 @@ DELETE /projects/:projectId
 
 Unique constraint:
 
-```
+```text
 (name, clientName, startDate)
 ```
 
-Duplicate creation returns:
+Duplicate creation/update returns:
 
-```
+```text
 409 PROJECT_ALREADY_EXISTS
 ```
+
+Example create:
+
+```http
+POST /projects
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "P1",
+  "clientName": "Client A",
+  "startDate": "2026-03-01"
+}
+```
+
+---
+
+# Project ↔ Worker Assignments
+
+Assignments are modeled as an N:M relation between projects and workers.
+
+Endpoints:
+
+```http
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
+```
+
+Request example:
+
+```http
+POST /projects/:projectId/workers
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
+{
+  "workerId": "..."
+}
+```
+
+Rules:
+
+- `404 NOT_FOUND` if project does not exist
+- `404 NOT_FOUND` if worker does not exist
+- `409 ASSIGNMENT_ALREADY_EXISTS` if the assignment already exists
+- `404 NOT_FOUND` on delete if assignment does not exist
+
+Project read DTOs already include assigned workers:
+
+```json
+{
+  "id": "...",
+  "name": "Project 1",
+  "clientName": "Client A",
+  "startDate": "2026-03-05",
+  "workers": [
+    {
+      "id": "...",
+      "name": "Worker 1",
+      "role": "Tech",
+      "seniority": "junior"
+    }
+  ]
+}
+```
+
+---
+
+# Frontend Features
+
+The frontend includes:
+
+- public browsing of projects and workers
+- login page
+- auth provider with token persistence in `localStorage`
+- automatic Authorization header injection through shared `http` client
+- protected UI actions for create/update/delete
+- assignment and unassignment UI in project detail
+
+## Frontend auth behavior
+
+Without login:
+
+- lists remain visible
+- detail pages remain visible
+- write actions are hidden or redirect to login
+
+With login:
+
+- create/edit/delete actions become available
+- assignments can be created/removed
+- session persists across refresh via `localStorage`
+
+Logout:
+
+- clears token
+- returns UI to public/read-only mode
 
 ---
 
@@ -321,15 +485,80 @@ Duplicate creation returns:
 
 All errors follow the same contract.
 
-```
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Validation error",
-    "details": [],
+    "details": [
+      {
+        "field": "fieldName",
+        "reason": "invalid_format"
+      }
+    ],
     "requestId": "..."
   }
 }
+```
+
+Current project error codes:
+
+- `VALIDATION_ERROR`
+- `UNAUTHORIZED`
+- `INVALID_CREDENTIALS`
+- `NOT_FOUND`
+- `ASSIGNMENT_ALREADY_EXISTS`
+- `PROJECT_ALREADY_EXISTS`
+- `INTERNAL_ERROR`
+
+---
+
+# Environment Files
+
+## Backend tracked example file
+
+Use this file for the repository:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+DATABASE_URL="file:./prisma/dev.db"
+```
+
+Recommended file path:
+
+```text
+apps/api/.env.example
+```
+
+## Local backend file (not committed)
+
+Create a local file for development:
+
+```text
+apps/api/.env
+```
+
+Example:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+DATABASE_URL="file:./prisma/dev.db"
+```
+
+## Frontend optional local env
+
+If needed, create:
+
+```text
+apps/web/.env.local
+```
+
+Example:
+
+```env
+VITE_API_BASE_URL=/api/v1
 ```
 
 ---
@@ -338,20 +567,32 @@ All errors follow the same contract.
 
 Install dependencies:
 
-```
+```bash
 npm install
+```
+
+Run Prisma migrations/reset database:
+
+```bash
+npm run api:prisma:migrate:reset
 ```
 
 Start API:
 
-```
+```bash
 npm run api:dev
 ```
 
-Run migrations:
+Start frontend:
 
+```bash
+npm run web:dev
 ```
-npm run api:prisma:migrate:reset
+
+Build full monorepo:
+
+```bash
+npm run build
 ```
 
 ---
@@ -360,44 +601,64 @@ npm run api:prisma:migrate:reset
 
 Health:
 
-```
+```bash
 curl http://localhost:3000/api/v1/health
 ```
 
 Login:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
 ```
 
 Create Worker:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"W1","role":"Dev","seniority":"junior"}'
 ```
 
 Create Project:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/projects -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"P1","clientName":"C1","startDate":"2026-03-01"}'
+```
+
+Assign Worker to Project:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/projects/<projectId>/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"workerId":"<workerId>"}'
 ```
 
 ---
 
-# Next Steps
+# Current UI Routes
 
-Upcoming slice:
+Frontend routes currently available:
 
-**Project ↔ Worker Assignments**
-
-Endpoints to implement:
-
+```text
+/               -> redirects to /projects
+/login          -> login page
+/projects       -> projects list + create/edit/delete UI
+/projects/:id   -> project detail + assignment UI
+/workers        -> workers list + create/edit/delete UI
 ```
-POST   /projects/:projectId/workers
-DELETE /projects/:projectId/workers/:workerId
-```
 
-This will allow assigning workers to projects.
+---
+
+# Notes
+
+This project intentionally uses a simple hardcoded auth flow because it is a technical challenge implementation.
+
+It does **not** include:
+
+- JWT signing/verification
+- refresh tokens
+- cookies
+- backend sessions
+- RBAC / roles
+- complex auth infrastructure
+
+The goal is to keep the solution minimal, contract-first, and consistent with the project architecture.
 
 ---
 
@@ -1830,6 +2091,11 @@ export default defineConfig({
 ```
 
 ```text
+=== apps/web/.env.example ===
+VITE_API_BASE_URL=/api/v1
+```
+
+```text
 === apps/web/eslint.config.js ===
 import js from "@eslint/js";
 import globals from "globals";
@@ -1929,6 +2195,7 @@ export default [
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
 import { ProjectDetailPage } from "./features/projects/pages/ProjectDetailPage";
+import { WorkersListPage } from "./features/projects/pages/WorkersListPage";
 import { LoginPage } from "./features/auth/pages/LoginPage";
 import { useAuth } from "./features/auth/context/AuthContext";
 
@@ -1946,6 +2213,7 @@ function AppShell() {
         }}
       >
         <Link to="/projects">Projects</Link>
+        <Link to="/workers">Workers</Link>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
           {isAuthenticated ? (
@@ -1964,6 +2232,7 @@ function AppShell() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+        <Route path="/workers" element={<WorkersListPage />} />
       </Routes>
     </div>
   );
@@ -2041,7 +2310,7 @@ export function AuthProvider({ children }: Props) {
     setHttpAuthToken(null);
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       token,
       isAuthenticated: !!token,
@@ -2069,11 +2338,11 @@ export function useAuth() {
 === apps/web/src/features/auth/pages/LoginPage.tsx ===
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../context/AuthContext";
-import { isApiErrorResponse } from "../types/auth";
+import { isAuthErrorResponse } from "../types/auth";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -2082,7 +2351,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-type LocationState = {
+type LoginLocationState = {
   from?: string;
 };
 
@@ -2093,7 +2362,7 @@ export function LoginPage() {
   const [submitError, setSubmitError] = useState("");
 
   const from =
-    ((location.state as LocationState | null)?.from ?? "/projects") ||
+    ((location.state as LoginLocationState | null)?.from ?? "/projects") ||
     "/projects";
 
   const {
@@ -2118,13 +2387,19 @@ export function LoginPage() {
     try {
       await login(values);
       navigate(from, { replace: true });
-    } catch (e: unknown) {
-      if (isApiErrorResponse(e) && e.error.code === "INVALID_CREDENTIALS") {
+    } catch (error: unknown) {
+      if (
+        isAuthErrorResponse(error) &&
+        error.error.code === "INVALID_CREDENTIALS"
+      ) {
         setSubmitError("Credenciales inválidas.");
         return;
       }
 
-      if (isApiErrorResponse(e) && e.error.code === "VALIDATION_ERROR") {
+      if (
+        isAuthErrorResponse(error) &&
+        error.error.code === "VALIDATION_ERROR"
+      ) {
         setSubmitError("Debes completar username y password.");
         return;
       }
@@ -2239,18 +2514,331 @@ export const projectsApi = {
 ```text
 === apps/web/src/features/projects/api/workersApi.ts ===
 import { http } from "@/shared/api/http";
-import type { WorkerDTO } from "../types/projects";
+import type {
+  WorkerCreateDTO,
+  WorkerDTO,
+  WorkerUpdateDTO
+} from "../types/projects";
 
-export type WorkersListResponseDTO = { items: WorkerDTO[] };
+export type WorkersListResponseDTO = {
+  items: WorkerDTO[];
+};
 
 export const workersApi = {
-  list: () => http.get<WorkersListResponseDTO>("/workers")
+  list: () => http.get<WorkersListResponseDTO>("/workers"),
+
+  create: (data: WorkerCreateDTO) => http.post<WorkerDTO>("/workers", data),
+
+  update: (workerId: string, data: WorkerUpdateDTO) =>
+    http.patch<WorkerDTO>(`/workers/${workerId}`, data),
+
+  remove: (workerId: string) => http.delete<void>(`/workers/${workerId}`)
 };
 ```
 
 ```text
 === apps/web/src/features/projects/components/ProjectModal.tsx ===
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  projectFormSchema,
+  type ProjectFormValues
+} from "../schemas/projectForm.schema";
 
+type ProjectModalProps = {
+  isOpen: boolean;
+  mode: "create" | "edit";
+  initialValues?: Partial<ProjectFormValues>;
+  isSubmitting: boolean;
+  errorMessage: string;
+  onClose: () => void;
+  onSubmit: (values: ProjectFormValues) => Promise<void>;
+};
+
+const emptyValues: ProjectFormValues = {
+  name: "",
+  clientName: "",
+  startDate: "",
+  endDate: ""
+};
+
+export function ProjectModal({
+  isOpen,
+  mode,
+  initialValues,
+  isSubmitting,
+  errorMessage,
+  onClose,
+  onSubmit
+}: ProjectModalProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectFormSchema),
+    defaultValues: emptyValues
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    reset({
+      name: initialValues?.name ?? "",
+      clientName: initialValues?.clientName ?? "",
+      startDate: initialValues?.startDate ?? "",
+      endDate: initialValues?.endDate ?? ""
+    });
+  }, [initialValues, isOpen, reset]);
+
+  if (!isOpen) return null;
+
+  async function submit(values: ProjectFormValues) {
+    await onSubmit({
+      ...values,
+      endDate: values.endDate?.trim() ? values.endDate : undefined
+    });
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "white",
+          width: 520,
+          maxWidth: "100%",
+          borderRadius: 12,
+          padding: 16
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 style={{ marginTop: 0 }}>
+          {mode === "create" ? "Create project" : "Edit project"}
+        </h3>
+
+        <form
+          onSubmit={handleSubmit(submit)}
+          style={{ display: "grid", gap: 12 }}
+        >
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-name">Name</label>
+            <input id="project-name" {...register("name")} />
+            {errors.name ? (
+              <span style={{ color: "crimson" }}>{errors.name.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-clientName">Client</label>
+            <input id="project-clientName" {...register("clientName")} />
+            {errors.clientName ? (
+              <span style={{ color: "crimson" }}>
+                {errors.clientName.message}
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-startDate">Start date</label>
+            <input
+              id="project-startDate"
+              type="date"
+              {...register("startDate")}
+            />
+            {errors.startDate ? (
+              <span style={{ color: "crimson" }}>
+                {errors.startDate.message}
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-endDate">End date</label>
+            <input id="project-endDate" type="date" {...register("endDate")} />
+            {errors.endDate ? (
+              <span style={{ color: "crimson" }}>{errors.endDate.message}</span>
+            ) : null}
+          </div>
+
+          {errorMessage ? (
+            <div style={{ color: "crimson" }}>{errorMessage}</div>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                  ? "Create"
+                  : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/projects/components/WorkerModal.tsx ===
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  workerFormSchema,
+  type WorkerFormValues
+} from "../schemas/workerForm.schema";
+
+type WorkerModalProps = {
+  isOpen: boolean;
+  mode: "create" | "edit";
+  initialValues?: Partial<WorkerFormValues>;
+  isSubmitting: boolean;
+  errorMessage: string;
+  onClose: () => void;
+  onSubmit: (values: WorkerFormValues) => Promise<void>;
+};
+
+const emptyValues: WorkerFormValues = {
+  name: "",
+  role: "",
+  seniority: "junior"
+};
+
+export function WorkerModal({
+  isOpen,
+  mode,
+  initialValues,
+  isSubmitting,
+  errorMessage,
+  onClose,
+  onSubmit
+}: WorkerModalProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<WorkerFormValues>({
+    resolver: zodResolver(workerFormSchema),
+    defaultValues: emptyValues
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    reset({
+      name: initialValues?.name ?? "",
+      role: initialValues?.role ?? "",
+      seniority: initialValues?.seniority ?? "junior"
+    });
+  }, [initialValues, isOpen, reset]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "white",
+          width: 520,
+          maxWidth: "100%",
+          borderRadius: 12,
+          padding: 16
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 style={{ marginTop: 0 }}>
+          {mode === "create" ? "Create worker" : "Edit worker"}
+        </h3>
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          style={{ display: "grid", gap: 12 }}
+        >
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-name">Name</label>
+            <input id="worker-name" {...register("name")} />
+            {errors.name ? (
+              <span style={{ color: "crimson" }}>{errors.name.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-role">Role</label>
+            <input id="worker-role" {...register("role")} />
+            {errors.role ? (
+              <span style={{ color: "crimson" }}>{errors.role.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-seniority">Seniority</label>
+            <select id="worker-seniority" {...register("seniority")}>
+              <option value="junior">junior</option>
+              <option value="semi-senior">semi-senior</option>
+              <option value="senior">senior</option>
+            </select>
+            {errors.seniority ? (
+              <span style={{ color: "crimson" }}>
+                {errors.seniority.message}
+              </span>
+            ) : null}
+          </div>
+
+          {errorMessage ? (
+            <div style={{ color: "crimson" }}>{errorMessage}</div>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                  ? "Create"
+                  : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 ```
 
 ```text
@@ -2306,6 +2894,50 @@ export function useProjectById(projectId: string) {
 ```
 
 ```text
+=== apps/web/src/features/projects/hooks/useProjectMutations.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsApi } from "../api/projectsApi";
+import type { ProjectCreateDTO, ProjectUpdateDTO } from "../types/projects";
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ProjectCreateDTO) => projectsApi.create(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { projectId: string; data: ProjectUpdateDTO }) =>
+      projectsApi.update(args.projectId, args.data),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", "byId", variables.projectId]
+      });
+    }
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (projectId: string) => projectsApi.remove(projectId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+```
+
+```text
 === apps/web/src/features/projects/hooks/useProjects.ts ===
 import { useQuery } from "@tanstack/react-query";
 import { projectsApi } from "../api/projectsApi";
@@ -2318,6 +2950,49 @@ export function useProjects() {
     staleTime: 10_000,
     retry: 0,
     refetchOnWindowFocus: false
+  });
+}
+```
+
+```text
+=== apps/web/src/features/projects/hooks/useWorkerMutations.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { workersApi } from "../api/workersApi";
+import type { WorkerCreateDTO, WorkerUpdateDTO } from "../types/projects";
+
+export function useCreateWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: WorkerCreateDTO) => workersApi.create(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+    }
+  });
+}
+
+export function useUpdateWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { workerId: string; data: WorkerUpdateDTO }) =>
+      workersApi.update(args.workerId, args.data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useDeleteWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (workerId: string) => workersApi.remove(workerId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
   });
 }
 ```
@@ -2370,13 +3045,13 @@ export function ProjectDetailPage() {
   const [actionMessage, setActionMessage] = useState<string>("");
 
   const assignedIds = useMemo(
-    () => new Set((project?.workers ?? []).map((w) => w.id)),
+    () => new Set((project?.workers ?? []).map((worker) => worker.id)),
     [project]
   );
 
   const availableWorkers: WorkerDTO[] = useMemo(() => {
-    const all = workersList?.items ?? [];
-    return all.filter((w) => !assignedIds.has(w.id));
+    const allWorkers = workersList?.items ?? [];
+    return allWorkers.filter((worker) => !assignedIds.has(worker.id));
   }, [workersList, assignedIds]);
 
   if (isLoading) return <div>Loading...</div>;
@@ -2403,23 +3078,26 @@ export function ProjectDetailPage() {
 
     if (!selectedWorkerId) return;
 
+    const currentProjectId = project.id;
+
     try {
       await assign.mutateAsync({
-        projectId: project.id,
+        projectId: currentProjectId,
         workerId: selectedWorkerId
       });
+
       setIsAssignOpen(false);
       setSelectedWorkerId("");
-    } catch (e: unknown) {
+    } catch (error: unknown) {
       if (
-        isApiErrorResponse(e) &&
-        e.error.code === "ASSIGNMENT_ALREADY_EXISTS"
+        isApiErrorResponse(error) &&
+        error.error.code === "ASSIGNMENT_ALREADY_EXISTS"
       ) {
         setAssignErrorMsg("Este trabajador ya está asignado a este proyecto.");
         return;
       }
 
-      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
         setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
         goToLoginWithReturn();
         return;
@@ -2440,10 +3118,15 @@ export function ProjectDetailPage() {
       return;
     }
 
+    const currentProjectId = project.id;
+
     try {
-      await unassign.mutateAsync({ projectId: project.id, workerId });
-    } catch (e: unknown) {
-      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+      await unassign.mutateAsync({
+        projectId: currentProjectId,
+        workerId
+      });
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
         setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
         goToLoginWithReturn();
         return;
@@ -2460,9 +3143,11 @@ export function ProjectDetailPage() {
       </div>
 
       <h2 style={{ margin: 0 }}>{project.name}</h2>
+
       <p style={{ marginTop: 6 }}>
         <strong>Client:</strong> {project.clientName}
       </p>
+
       <p style={{ marginTop: 6 }}>
         <strong>Dates:</strong> {project.startDate}{" "}
         {project.endDate ? `→ ${project.endDate}` : ""}
@@ -2491,9 +3176,7 @@ export function ProjectDetailPage() {
         {isAuthenticated ? (
           <button onClick={() => setIsAssignOpen(true)}>Assign worker</button>
         ) : (
-          <button onClick={goToLoginWithReturn} title="Debes iniciar sesión">
-            Assign worker
-          </button>
+          <button onClick={goToLoginWithReturn}>Assign worker</button>
         )}
       </div>
 
@@ -2501,9 +3184,9 @@ export function ProjectDetailPage() {
         <div style={{ marginTop: 12 }}>No workers assigned yet</div>
       ) : (
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {project.workers.map((w) => (
+          {project.workers.map((worker) => (
             <div
-              key={w.id}
+              key={worker.id}
               style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}
             >
               <div
@@ -2514,15 +3197,15 @@ export function ProjectDetailPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 600 }}>{w.name}</div>
+                  <div style={{ fontWeight: 600 }}>{worker.name}</div>
                   <div style={{ fontSize: 14, opacity: 0.8 }}>
-                    {w.role} · {w.seniority}
+                    {worker.role} · {worker.seniority}
                   </div>
                 </div>
 
                 {isAuthenticated ? (
                   <button
-                    onClick={() => onUnassign(w.id)}
+                    onClick={() => onUnassign(worker.id)}
                     disabled={unassign.isPending}
                     title="Unassign"
                   >
@@ -2556,7 +3239,7 @@ export function ProjectDetailPage() {
               borderRadius: 12,
               padding: 16
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <h3 style={{ marginTop: 0 }}>Assign worker</h3>
 
@@ -2569,12 +3252,12 @@ export function ProjectDetailPage() {
                 <label style={{ fontSize: 14 }}>Worker</label>
                 <select
                   value={selectedWorkerId}
-                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                  onChange={(event) => setSelectedWorkerId(event.target.value)}
                 >
                   <option value="">Select...</option>
-                  {availableWorkers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} — {w.role} ({w.seniority})
+                  {availableWorkers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.name} — {worker.role} ({worker.seniority})
                     </option>
                   ))}
                 </select>
@@ -2612,20 +3295,149 @@ export function ProjectDetailPage() {
 
 ```text
 === apps/web/src/features/projects/pages/ProjectsListPage.tsx ===
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useProjects } from "../hooks/useProjects";
+import {
+  useCreateProject,
+  useDeleteProject,
+  useUpdateProject
+} from "../hooks/useProjectMutations";
+import { ProjectModal } from "../components/ProjectModal";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import { isApiErrorResponse, type ProjectResponseDTO } from "../types/projects";
+import type { ProjectFormValues } from "../schemas/projectForm.schema";
+
+type ProjectModalState =
+  | { mode: "create"; project: null }
+  | { mode: "edit"; project: ProjectResponseDTO }
+  | null;
 
 export function ProjectsListPage() {
-  const { data, isLoading } = useProjects();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading, error } = useProjects();
+
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
+
+  const [modalState, setModalState] = useState<ProjectModalState>(null);
+  const [submitError, setSubmitError] = useState("");
 
   if (isLoading) return <div>Loading...</div>;
-  if (!data?.items.length) return <div>No projects yet</div>;
+  if (error) return <div>Error loading projects</div>;
+
+  const projects = data?.items ?? [];
+
+  async function handleCreate(values: ProjectFormValues) {
+    setSubmitError("");
+
+    try {
+      await createProject.mutateAsync(values);
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      if (
+        isApiErrorResponse(error) &&
+        error.error.code === "PROJECT_ALREADY_EXISTS"
+      ) {
+        setSubmitError(
+          "A project with the same name, client and date already exists."
+        );
+        return;
+      }
+
+      setSubmitError("Could not create project.");
+    }
+  }
+
+  async function handleUpdate(values: ProjectFormValues) {
+    if (!modalState || modalState.mode !== "edit") return;
+
+    setSubmitError("");
+
+    try {
+      await updateProject.mutateAsync({
+        projectId: modalState.project.id,
+        data: values
+      });
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      if (
+        isApiErrorResponse(error) &&
+        error.error.code === "PROJECT_ALREADY_EXISTS"
+      ) {
+        setSubmitError(
+          "A project with the same name, client and date already exists."
+        );
+        return;
+      }
+
+      setSubmitError("Could not update project.");
+    }
+  }
+
+  async function handleDelete(projectId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project?"
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteProject.mutateAsync(projectId);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      window.alert("Could not delete project.");
+    }
+  }
 
   return (
     <div>
-      {data.items.map((p) => (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 16
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Projects</h2>
+
+        {isAuthenticated ? (
+          <button
+            onClick={() => setModalState({ mode: "create", project: null })}
+          >
+            Create project
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login", { state: { from: "/projects" } })}
+          >
+            Login to create
+          </button>
+        )}
+      </div>
+
+      {!projects.length ? <div>No projects yet</div> : null}
+
+      {projects.map((project) => (
         <div
-          key={p.id}
+          key={project.id}
           style={{
             padding: 12,
             border: "1px solid #ddd",
@@ -2633,12 +3445,255 @@ export function ProjectsListPage() {
             marginBottom: 12
           }}
         >
-          <h3 style={{ margin: 0 }}>
-            <Link to={`/projects/${p.id}`}>{p.name}</Link>
-          </h3>
-          <p style={{ margin: "6px 0 0 0" }}>{p.clientName}</p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "start",
+              gap: 12
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0 }}>
+                <Link to={`/projects/${project.id}`}>{project.name}</Link>
+              </h3>
+              <p style={{ margin: "6px 0 0 0" }}>{project.clientName}</p>
+              <p style={{ margin: "6px 0 0 0", fontSize: 14 }}>
+                {project.startDate}{" "}
+                {project.endDate ? `→ ${project.endDate}` : ""}
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setModalState({ mode: "edit", project })}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(project.id)}
+                  disabled={deleteProject.isPending}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       ))}
+
+      <ProjectModal
+        isOpen={modalState !== null}
+        mode={modalState?.mode ?? "create"}
+        initialValues={
+          modalState?.mode === "edit"
+            ? {
+                name: modalState.project.name,
+                clientName: modalState.project.clientName,
+                startDate: modalState.project.startDate,
+                endDate: modalState.project.endDate
+              }
+            : undefined
+        }
+        isSubmitting={createProject.isPending || updateProject.isPending}
+        errorMessage={submitError}
+        onClose={() => {
+          setModalState(null);
+          setSubmitError("");
+        }}
+        onSubmit={modalState?.mode === "edit" ? handleUpdate : handleCreate}
+      />
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/projects/pages/WorkersListPage.tsx ===
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useWorkers } from "../hooks/useWorkers";
+import {
+  useCreateWorker,
+  useDeleteWorker,
+  useUpdateWorker
+} from "../hooks/useWorkerMutations";
+import { WorkerModal } from "../components/WorkerModal";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import { isApiErrorResponse, type WorkerDTO } from "../types/projects";
+import type { WorkerFormValues } from "../schemas/workerForm.schema";
+
+type WorkerModalState =
+  | { mode: "create"; worker: null }
+  | { mode: "edit"; worker: WorkerDTO }
+  | null;
+
+export function WorkersListPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading, error } = useWorkers();
+
+  const createWorker = useCreateWorker();
+  const updateWorker = useUpdateWorker();
+  const deleteWorker = useDeleteWorker();
+
+  const [modalState, setModalState] = useState<WorkerModalState>(null);
+  const [submitError, setSubmitError] = useState("");
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading workers</div>;
+
+  const workers = data?.items ?? [];
+
+  async function handleCreate(values: WorkerFormValues) {
+    setSubmitError("");
+
+    try {
+      await createWorker.mutateAsync(values);
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      setSubmitError("Could not create worker.");
+    }
+  }
+
+  async function handleUpdate(values: WorkerFormValues) {
+    if (!modalState || modalState.mode !== "edit") return;
+
+    setSubmitError("");
+
+    try {
+      await updateWorker.mutateAsync({
+        workerId: modalState.worker.id,
+        data: values
+      });
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      setSubmitError("Could not update worker.");
+    }
+  }
+
+  async function handleDelete(workerId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this worker?"
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteWorker.mutateAsync(workerId);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      window.alert("Could not delete worker.");
+    }
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 16
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Workers</h2>
+
+        {isAuthenticated ? (
+          <button
+            onClick={() => setModalState({ mode: "create", worker: null })}
+          >
+            Create worker
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login", { state: { from: "/workers" } })}
+          >
+            Login to create
+          </button>
+        )}
+      </div>
+
+      {!workers.length ? <div>No workers yet</div> : null}
+
+      {workers.map((worker) => (
+        <div
+          key={worker.id}
+          style={{
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            marginBottom: 12
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "start",
+              gap: 12
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0 }}>{worker.name}</h3>
+              <p style={{ margin: "6px 0 0 0" }}>{worker.role}</p>
+              <p style={{ margin: "6px 0 0 0", fontSize: 14 }}>
+                {worker.seniority}
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setModalState({ mode: "edit", worker })}>
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(worker.id)}
+                  disabled={deleteWorker.isPending}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
+      <WorkerModal
+        isOpen={modalState !== null}
+        mode={modalState?.mode ?? "create"}
+        initialValues={
+          modalState?.mode === "edit"
+            ? {
+                name: modalState.worker.name,
+                role: modalState.worker.role,
+                seniority: modalState.worker.seniority
+              }
+            : undefined
+        }
+        isSubmitting={createWorker.isPending || updateWorker.isPending}
+        errorMessage={submitError}
+        onClose={() => {
+          setModalState(null);
+          setSubmitError("");
+        }}
+        onSubmit={modalState?.mode === "edit" ? handleUpdate : handleCreate}
+      />
     </div>
   );
 }
@@ -2652,15 +3707,46 @@ const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 export const projectFormSchema = z
   .object({
-    name: z.string().min(1),
-    clientName: z.string().min(1),
-    startDate: z.string().regex(isoDateRegex),
-    endDate: z.string().regex(isoDateRegex).optional()
+    name: z.string().min(1, "Name is required"),
+    clientName: z.string().min(1, "Client name is required"),
+    startDate: z.string().regex(isoDateRegex, "Invalid date format"),
+    endDate: z
+      .string()
+      .regex(isoDateRegex, "Invalid date format")
+      .optional()
+      .or(z.literal(""))
   })
-  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    path: ["endDate"],
-    message: "endDate must be greater than or equal to startDate"
+  .superRefine((data, ctx) => {
+    const normalizedEndDate = data.endDate === "" ? undefined : data.endDate;
+
+    if (normalizedEndDate && normalizedEndDate < data.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endDate"],
+        message: "endDate must be greater than or equal to startDate"
+      });
+    }
   });
+
+export type ProjectFormValues = {
+  name: string;
+  clientName: string;
+  startDate: string;
+  endDate?: string;
+};
+```
+
+```text
+=== apps/web/src/features/projects/schemas/workerForm.schema.ts ===
+import { z } from "zod";
+
+export const workerFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(120, "Max 120 chars"),
+  role: z.string().min(1, "Role is required").max(60, "Max 60 chars"),
+  seniority: z.enum(["junior", "semi-senior", "senior"])
+});
+
+export type WorkerFormValues = z.infer<typeof workerFormSchema>;
 ```
 
 ```text
@@ -2672,11 +3758,19 @@ export type WorkerDTO = {
   seniority: "junior" | "semi-senior" | "senior";
 };
 
+export type WorkerCreateDTO = {
+  name: string;
+  role: string;
+  seniority: "junior" | "semi-senior" | "senior";
+};
+
+export type WorkerUpdateDTO = Partial<WorkerCreateDTO>;
+
 export type ProjectResponseDTO = {
   id: string;
   name: string;
   clientName: string;
-  startDate: string; // YYYY-MM-DD
+  startDate: string;
   endDate?: string;
   workers: WorkerDTO[];
 };
@@ -2703,11 +3797,13 @@ export type ApiErrorResponseDTO = {
   };
 };
 
-export function isApiErrorResponse(e: unknown): e is ApiErrorResponseDTO {
-  if (!e || typeof e !== "object") return false;
-  if (!("error" in e)) return false;
+export function isApiErrorResponse(
+  error: unknown
+): error is ApiErrorResponseDTO {
+  if (!error || typeof error !== "object") return false;
+  if (!("error" in error)) return false;
 
-  const maybeError = (e as { error?: unknown }).error;
+  const maybeError = (error as { error?: unknown }).error;
   if (!maybeError || typeof maybeError !== "object") return false;
 
   return typeof (maybeError as { code?: unknown }).code === "string";
@@ -2761,20 +3857,20 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${authToken}`);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
 
-  const data = (await res.json().catch(() => null)) as T | null;
+  const data = (await response.json().catch(() => null)) as T | null;
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw (
       data ??
       ({
-        error: { code: "HTTP_ERROR", message: `HTTP ${res.status}` }
+        error: { code: "HTTP_ERROR", message: `HTTP ${response.status}` }
       } as unknown as T)
     );
   }
@@ -2920,7 +4016,7 @@ export default defineConfig({
 === project_context.md ===
 # Project Context Package
 
-- Generated at: 2026-03-06T19:29:19-03:00
+- Generated at: 2026-03-06T20:36:56-03:00
 - Root: `.` (current directory)
 
 ## Rules Used
@@ -3017,17 +4113,22 @@ export default defineConfig({
 │       │   │       │   ├── projectsApi.ts
 │       │   │       │   └── workersApi.ts
 │       │   │       ├── components/
-│       │   │       │   └── ProjectModal.tsx
+│       │   │       │   ├── ProjectModal.tsx
+│       │   │       │   └── WorkerModal.tsx
 │       │   │       ├── hooks/
 │       │   │       │   ├── useProjectAssignments.ts
 │       │   │       │   ├── useProjectById.ts
+│       │   │       │   ├── useProjectMutations.ts
 │       │   │       │   ├── useProjects.ts
+│       │   │       │   ├── useWorkerMutations.ts
 │       │   │       │   └── useWorkers.ts
 │       │   │       ├── pages/
 │       │   │       │   ├── ProjectDetailPage.tsx
-│       │   │       │   └── ProjectsListPage.tsx
+│       │   │       │   ├── ProjectsListPage.tsx
+│       │   │       │   └── WorkersListPage.tsx
 │       │   │       ├── schemas/
-│       │   │       │   └── projectForm.schema.ts
+│       │   │       │   ├── projectForm.schema.ts
+│       │   │       │   └── workerForm.schema.ts
 │       │   │       └── types/
 │       │   │           └── projects.ts
 │       │   ├── shared/
@@ -3036,6 +4137,7 @@ export default defineConfig({
 │       │   ├── App.tsx
 │       │   ├── main.tsx
 │       │   └── vite-env.d.ts
+│       ├── .env.example
 │       ├── eslint.config.js
 │       ├── package.json
 │       ├── tsconfig.json
@@ -3051,10 +4153,15 @@ export default defineConfig({
 
 ```text
 === README.md ===
-
 # Projects Workers Monorepo
 
-Fullstack technical project implementing **Workers CRUD** and **Projects CRUD** using a **contract‑first approach** with **TypeScript**.
+Fullstack technical project implementing a contract-first monorepo with:
+
+- Authentication
+- Workers CRUD
+- Projects CRUD
+- Project ↔ Worker assignments
+- Frontend auth-aware UI for protected mutations
 
 The repository is structured as a monorepo containing a backend API and a frontend web application.
 
@@ -3064,7 +4171,7 @@ The repository is structured as a monorepo containing a backend API and a fronte
 
 Monorepo structure:
 
-```
+```text
 apps/
   api/    -> Fastify + TypeScript backend API
   web/    -> React + Vite frontend
@@ -3087,12 +4194,13 @@ Frontend stack:
 - React Query
 - React Hook Form
 - Zod
+- React Router
 
 ---
 
 # API Base URL
 
-```
+```text
 http://localhost:3000/api/v1
 ```
 
@@ -3102,21 +4210,22 @@ http://localhost:3000/api/v1
 
 ## Base Infrastructure
 
-- Request ID middleware
+- Request ID support via Fastify `req.id`
+- `x-request-id` response header on every response
 - Global error handler
 - Standard error format
 - Health endpoint
-- Auth middleware (dev token)
+- Auth middleware for protected write operations
 
 Endpoint:
 
-```
+```http
 GET /api/v1/health
 ```
 
 Response:
 
-```
+```json
 {
   "status": "ok",
   "requestId": "..."
@@ -3127,15 +4236,15 @@ Response:
 
 # Authentication
 
-Temporary development login.
+Temporary hardcoded login for the technical challenge.
 
-```
+```http
 POST /api/v1/auth/login
 ```
 
 Request:
 
-```
+```json
 {
   "username": "admin",
   "password": "admin123"
@@ -3144,7 +4253,7 @@ Request:
 
 Response:
 
-```
+```json
 {
   "accessToken": "dev-token",
   "tokenType": "Bearer",
@@ -3152,10 +4261,55 @@ Response:
 }
 ```
 
-Use token in requests:
+Use token in protected requests:
 
-```
+```http
 Authorization: Bearer dev-token
+```
+
+## Auth behavior
+
+Protected write endpoints require:
+
+```http
+Authorization: Bearer <token>
+```
+
+If token is missing or invalid:
+
+- `401 UNAUTHORIZED`
+
+If login credentials are invalid:
+
+- `401 INVALID_CREDENTIALS`
+
+### Public endpoints
+
+These remain public:
+
+```http
+GET /health
+GET /workers
+GET /workers/:workerId
+GET /projects
+GET /projects/:projectId
+```
+
+### Protected endpoints
+
+These require auth:
+
+```http
+POST   /workers
+PATCH  /workers/:workerId
+DELETE /workers/:workerId
+
+POST   /projects
+PATCH  /projects/:projectId
+DELETE /projects/:projectId
+
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
 ```
 
 ---
@@ -3164,7 +4318,7 @@ Authorization: Bearer dev-token
 
 Model:
 
-```
+```text
 Worker
 - id (UUID)
 - name
@@ -3174,7 +4328,7 @@ Worker
 
 Endpoints:
 
-```
+```http
 POST   /workers
 GET    /workers
 GET    /workers/:workerId
@@ -3184,8 +4338,13 @@ DELETE /workers/:workerId
 
 Example create:
 
-```
+```http
 POST /workers
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
 {
   "name": "John",
   "role": "Backend Developer",
@@ -3199,7 +4358,7 @@ POST /workers
 
 Model:
 
-```
+```text
 Project
 - id (UUID)
 - name
@@ -3210,12 +4369,12 @@ Project
 
 Validation rules:
 
-- startDate format must be `YYYY-MM-DD`
-- if endDate exists → `endDate >= startDate`
+- `startDate` format must be `YYYY-MM-DD`
+- if `endDate` exists, then `endDate >= startDate`
 
 Endpoints:
 
-```
+```http
 POST   /projects
 GET    /projects
 GET    /projects/:projectId
@@ -3225,15 +4384,116 @@ DELETE /projects/:projectId
 
 Unique constraint:
 
-```
+```text
 (name, clientName, startDate)
 ```
 
-Duplicate creation returns:
+Duplicate creation/update returns:
 
-```
+```text
 409 PROJECT_ALREADY_EXISTS
 ```
+
+Example create:
+
+```http
+POST /projects
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "P1",
+  "clientName": "Client A",
+  "startDate": "2026-03-01"
+}
+```
+
+---
+
+# Project ↔ Worker Assignments
+
+Assignments are modeled as an N:M relation between projects and workers.
+
+Endpoints:
+
+```http
+POST   /projects/:projectId/workers
+DELETE /projects/:projectId/workers/:workerId
+```
+
+Request example:
+
+```http
+POST /projects/:projectId/workers
+Authorization: Bearer dev-token
+Content-Type: application/json
+```
+
+```json
+{
+  "workerId": "..."
+}
+```
+
+Rules:
+
+- `404 NOT_FOUND` if project does not exist
+- `404 NOT_FOUND` if worker does not exist
+- `409 ASSIGNMENT_ALREADY_EXISTS` if the assignment already exists
+- `404 NOT_FOUND` on delete if assignment does not exist
+
+Project read DTOs already include assigned workers:
+
+```json
+{
+  "id": "...",
+  "name": "Project 1",
+  "clientName": "Client A",
+  "startDate": "2026-03-05",
+  "workers": [
+    {
+      "id": "...",
+      "name": "Worker 1",
+      "role": "Tech",
+      "seniority": "junior"
+    }
+  ]
+}
+```
+
+---
+
+# Frontend Features
+
+The frontend includes:
+
+- public browsing of projects and workers
+- login page
+- auth provider with token persistence in `localStorage`
+- automatic Authorization header injection through shared `http` client
+- protected UI actions for create/update/delete
+- assignment and unassignment UI in project detail
+
+## Frontend auth behavior
+
+Without login:
+
+- lists remain visible
+- detail pages remain visible
+- write actions are hidden or redirect to login
+
+With login:
+
+- create/edit/delete actions become available
+- assignments can be created/removed
+- session persists across refresh via `localStorage`
+
+Logout:
+
+- clears token
+- returns UI to public/read-only mode
 
 ---
 
@@ -3241,15 +4501,80 @@ Duplicate creation returns:
 
 All errors follow the same contract.
 
-```
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Validation error",
-    "details": [],
+    "details": [
+      {
+        "field": "fieldName",
+        "reason": "invalid_format"
+      }
+    ],
     "requestId": "..."
   }
 }
+```
+
+Current project error codes:
+
+- `VALIDATION_ERROR`
+- `UNAUTHORIZED`
+- `INVALID_CREDENTIALS`
+- `NOT_FOUND`
+- `ASSIGNMENT_ALREADY_EXISTS`
+- `PROJECT_ALREADY_EXISTS`
+- `INTERNAL_ERROR`
+
+---
+
+# Environment Files
+
+## Backend tracked example file
+
+Use this file for the repository:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+DATABASE_URL="file:./prisma/dev.db"
+```
+
+Recommended file path:
+
+```text
+apps/api/.env.example
+```
+
+## Local backend file (not committed)
+
+Create a local file for development:
+
+```text
+apps/api/.env
+```
+
+Example:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+DATABASE_URL="file:./prisma/dev.db"
+```
+
+## Frontend optional local env
+
+If needed, create:
+
+```text
+apps/web/.env.local
+```
+
+Example:
+
+```env
+VITE_API_BASE_URL=/api/v1
 ```
 
 ---
@@ -3258,20 +4583,32 @@ All errors follow the same contract.
 
 Install dependencies:
 
-```
+```bash
 npm install
+```
+
+Run Prisma migrations/reset database:
+
+```bash
+npm run api:prisma:migrate:reset
 ```
 
 Start API:
 
-```
+```bash
 npm run api:dev
 ```
 
-Run migrations:
+Start frontend:
 
+```bash
+npm run web:dev
 ```
-npm run api:prisma:migrate:reset
+
+Build full monorepo:
+
+```bash
+npm run build
 ```
 
 ---
@@ -3280,44 +4617,64 @@ npm run api:prisma:migrate:reset
 
 Health:
 
-```
+```bash
 curl http://localhost:3000/api/v1/health
 ```
 
 Login:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'
 ```
 
 Create Worker:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"W1","role":"Dev","seniority":"junior"}'
 ```
 
 Create Project:
 
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/projects -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"name":"P1","clientName":"C1","startDate":"2026-03-01"}'
+```
+
+Assign Worker to Project:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/projects/<projectId>/workers -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{"workerId":"<workerId>"}'
 ```
 
 ---
 
-# Next Steps
+# Current UI Routes
 
-Upcoming slice:
+Frontend routes currently available:
 
-**Project ↔ Worker Assignments**
-
-Endpoints to implement:
-
+```text
+/               -> redirects to /projects
+/login          -> login page
+/projects       -> projects list + create/edit/delete UI
+/projects/:id   -> project detail + assignment UI
+/workers        -> workers list + create/edit/delete UI
 ```
-POST   /projects/:projectId/workers
-DELETE /projects/:projectId/workers/:workerId
-```
 
-This will allow assigning workers to projects.
+---
+
+# Notes
+
+This project intentionally uses a simple hardcoded auth flow because it is a technical challenge implementation.
+
+It does **not** include:
+
+- JWT signing/verification
+- refresh tokens
+- cookies
+- backend sessions
+- RBAC / roles
+- complex auth infrastructure
+
+The goal is to keep the solution minimal, contract-first, and consistent with the project architecture.
 
 ---
 
@@ -4750,6 +6107,11 @@ export default defineConfig({
 ```
 
 ```text
+=== apps/web/.env.example ===
+VITE_API_BASE_URL=/api/v1
+```
+
+```text
 === apps/web/eslint.config.js ===
 import js from "@eslint/js";
 import globals from "globals";
@@ -4849,6 +6211,7 @@ export default [
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
 import { ProjectDetailPage } from "./features/projects/pages/ProjectDetailPage";
+import { WorkersListPage } from "./features/projects/pages/WorkersListPage";
 import { LoginPage } from "./features/auth/pages/LoginPage";
 import { useAuth } from "./features/auth/context/AuthContext";
 
@@ -4866,6 +6229,7 @@ function AppShell() {
         }}
       >
         <Link to="/projects">Projects</Link>
+        <Link to="/workers">Workers</Link>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
           {isAuthenticated ? (
@@ -4884,6 +6248,7 @@ function AppShell() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+        <Route path="/workers" element={<WorkersListPage />} />
       </Routes>
     </div>
   );
@@ -4961,7 +6326,7 @@ export function AuthProvider({ children }: Props) {
     setHttpAuthToken(null);
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       token,
       isAuthenticated: !!token,
@@ -4989,11 +6354,11 @@ export function useAuth() {
 === apps/web/src/features/auth/pages/LoginPage.tsx ===
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../context/AuthContext";
-import { isApiErrorResponse } from "../types/auth";
+import { isAuthErrorResponse } from "../types/auth";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -5002,7 +6367,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-type LocationState = {
+type LoginLocationState = {
   from?: string;
 };
 
@@ -5013,7 +6378,7 @@ export function LoginPage() {
   const [submitError, setSubmitError] = useState("");
 
   const from =
-    ((location.state as LocationState | null)?.from ?? "/projects") ||
+    ((location.state as LoginLocationState | null)?.from ?? "/projects") ||
     "/projects";
 
   const {
@@ -5038,13 +6403,19 @@ export function LoginPage() {
     try {
       await login(values);
       navigate(from, { replace: true });
-    } catch (e: unknown) {
-      if (isApiErrorResponse(e) && e.error.code === "INVALID_CREDENTIALS") {
+    } catch (error: unknown) {
+      if (
+        isAuthErrorResponse(error) &&
+        error.error.code === "INVALID_CREDENTIALS"
+      ) {
         setSubmitError("Credenciales inválidas.");
         return;
       }
 
-      if (isApiErrorResponse(e) && e.error.code === "VALIDATION_ERROR") {
+      if (
+        isAuthErrorResponse(error) &&
+        error.error.code === "VALIDATION_ERROR"
+      ) {
         setSubmitError("Debes completar username y password.");
         return;
       }
@@ -5159,18 +6530,331 @@ export const projectsApi = {
 ```text
 === apps/web/src/features/projects/api/workersApi.ts ===
 import { http } from "@/shared/api/http";
-import type { WorkerDTO } from "../types/projects";
+import type {
+  WorkerCreateDTO,
+  WorkerDTO,
+  WorkerUpdateDTO
+} from "../types/projects";
 
-export type WorkersListResponseDTO = { items: WorkerDTO[] };
+export type WorkersListResponseDTO = {
+  items: WorkerDTO[];
+};
 
 export const workersApi = {
-  list: () => http.get<WorkersListResponseDTO>("/workers")
+  list: () => http.get<WorkersListResponseDTO>("/workers"),
+
+  create: (data: WorkerCreateDTO) => http.post<WorkerDTO>("/workers", data),
+
+  update: (workerId: string, data: WorkerUpdateDTO) =>
+    http.patch<WorkerDTO>(`/workers/${workerId}`, data),
+
+  remove: (workerId: string) => http.delete<void>(`/workers/${workerId}`)
 };
 ```
 
 ```text
 === apps/web/src/features/projects/components/ProjectModal.tsx ===
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  projectFormSchema,
+  type ProjectFormValues
+} from "../schemas/projectForm.schema";
 
+type ProjectModalProps = {
+  isOpen: boolean;
+  mode: "create" | "edit";
+  initialValues?: Partial<ProjectFormValues>;
+  isSubmitting: boolean;
+  errorMessage: string;
+  onClose: () => void;
+  onSubmit: (values: ProjectFormValues) => Promise<void>;
+};
+
+const emptyValues: ProjectFormValues = {
+  name: "",
+  clientName: "",
+  startDate: "",
+  endDate: ""
+};
+
+export function ProjectModal({
+  isOpen,
+  mode,
+  initialValues,
+  isSubmitting,
+  errorMessage,
+  onClose,
+  onSubmit
+}: ProjectModalProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectFormSchema),
+    defaultValues: emptyValues
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    reset({
+      name: initialValues?.name ?? "",
+      clientName: initialValues?.clientName ?? "",
+      startDate: initialValues?.startDate ?? "",
+      endDate: initialValues?.endDate ?? ""
+    });
+  }, [initialValues, isOpen, reset]);
+
+  if (!isOpen) return null;
+
+  async function submit(values: ProjectFormValues) {
+    await onSubmit({
+      ...values,
+      endDate: values.endDate?.trim() ? values.endDate : undefined
+    });
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "white",
+          width: 520,
+          maxWidth: "100%",
+          borderRadius: 12,
+          padding: 16
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 style={{ marginTop: 0 }}>
+          {mode === "create" ? "Create project" : "Edit project"}
+        </h3>
+
+        <form
+          onSubmit={handleSubmit(submit)}
+          style={{ display: "grid", gap: 12 }}
+        >
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-name">Name</label>
+            <input id="project-name" {...register("name")} />
+            {errors.name ? (
+              <span style={{ color: "crimson" }}>{errors.name.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-clientName">Client</label>
+            <input id="project-clientName" {...register("clientName")} />
+            {errors.clientName ? (
+              <span style={{ color: "crimson" }}>
+                {errors.clientName.message}
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-startDate">Start date</label>
+            <input
+              id="project-startDate"
+              type="date"
+              {...register("startDate")}
+            />
+            {errors.startDate ? (
+              <span style={{ color: "crimson" }}>
+                {errors.startDate.message}
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="project-endDate">End date</label>
+            <input id="project-endDate" type="date" {...register("endDate")} />
+            {errors.endDate ? (
+              <span style={{ color: "crimson" }}>{errors.endDate.message}</span>
+            ) : null}
+          </div>
+
+          {errorMessage ? (
+            <div style={{ color: "crimson" }}>{errorMessage}</div>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                  ? "Create"
+                  : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/projects/components/WorkerModal.tsx ===
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  workerFormSchema,
+  type WorkerFormValues
+} from "../schemas/workerForm.schema";
+
+type WorkerModalProps = {
+  isOpen: boolean;
+  mode: "create" | "edit";
+  initialValues?: Partial<WorkerFormValues>;
+  isSubmitting: boolean;
+  errorMessage: string;
+  onClose: () => void;
+  onSubmit: (values: WorkerFormValues) => Promise<void>;
+};
+
+const emptyValues: WorkerFormValues = {
+  name: "",
+  role: "",
+  seniority: "junior"
+};
+
+export function WorkerModal({
+  isOpen,
+  mode,
+  initialValues,
+  isSubmitting,
+  errorMessage,
+  onClose,
+  onSubmit
+}: WorkerModalProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<WorkerFormValues>({
+    resolver: zodResolver(workerFormSchema),
+    defaultValues: emptyValues
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    reset({
+      name: initialValues?.name ?? "",
+      role: initialValues?.role ?? "",
+      seniority: initialValues?.seniority ?? "junior"
+    });
+  }, [initialValues, isOpen, reset]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "white",
+          width: 520,
+          maxWidth: "100%",
+          borderRadius: 12,
+          padding: 16
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 style={{ marginTop: 0 }}>
+          {mode === "create" ? "Create worker" : "Edit worker"}
+        </h3>
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          style={{ display: "grid", gap: 12 }}
+        >
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-name">Name</label>
+            <input id="worker-name" {...register("name")} />
+            {errors.name ? (
+              <span style={{ color: "crimson" }}>{errors.name.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-role">Role</label>
+            <input id="worker-role" {...register("role")} />
+            {errors.role ? (
+              <span style={{ color: "crimson" }}>{errors.role.message}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="worker-seniority">Seniority</label>
+            <select id="worker-seniority" {...register("seniority")}>
+              <option value="junior">junior</option>
+              <option value="semi-senior">semi-senior</option>
+              <option value="senior">senior</option>
+            </select>
+            {errors.seniority ? (
+              <span style={{ color: "crimson" }}>
+                {errors.seniority.message}
+              </span>
+            ) : null}
+          </div>
+
+          {errorMessage ? (
+            <div style={{ color: "crimson" }}>{errorMessage}</div>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Saving..."
+                : mode === "create"
+                  ? "Create"
+                  : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 ```
 
 ```text
@@ -5226,6 +6910,50 @@ export function useProjectById(projectId: string) {
 ```
 
 ```text
+=== apps/web/src/features/projects/hooks/useProjectMutations.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsApi } from "../api/projectsApi";
+import type { ProjectCreateDTO, ProjectUpdateDTO } from "../types/projects";
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ProjectCreateDTO) => projectsApi.create(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { projectId: string; data: ProjectUpdateDTO }) =>
+      projectsApi.update(args.projectId, args.data),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", "byId", variables.projectId]
+      });
+    }
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (projectId: string) => projectsApi.remove(projectId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+```
+
+```text
 === apps/web/src/features/projects/hooks/useProjects.ts ===
 import { useQuery } from "@tanstack/react-query";
 import { projectsApi } from "../api/projectsApi";
@@ -5238,6 +6966,49 @@ export function useProjects() {
     staleTime: 10_000,
     retry: 0,
     refetchOnWindowFocus: false
+  });
+}
+```
+
+```text
+=== apps/web/src/features/projects/hooks/useWorkerMutations.ts ===
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { workersApi } from "../api/workersApi";
+import type { WorkerCreateDTO, WorkerUpdateDTO } from "../types/projects";
+
+export function useCreateWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: WorkerCreateDTO) => workersApi.create(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+    }
+  });
+}
+
+export function useUpdateWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { workerId: string; data: WorkerUpdateDTO }) =>
+      workersApi.update(args.workerId, args.data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
+  });
+}
+
+export function useDeleteWorker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (workerId: string) => workersApi.remove(workerId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workers", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+    }
   });
 }
 ```
@@ -5290,13 +7061,13 @@ export function ProjectDetailPage() {
   const [actionMessage, setActionMessage] = useState<string>("");
 
   const assignedIds = useMemo(
-    () => new Set((project?.workers ?? []).map((w) => w.id)),
+    () => new Set((project?.workers ?? []).map((worker) => worker.id)),
     [project]
   );
 
   const availableWorkers: WorkerDTO[] = useMemo(() => {
-    const all = workersList?.items ?? [];
-    return all.filter((w) => !assignedIds.has(w.id));
+    const allWorkers = workersList?.items ?? [];
+    return allWorkers.filter((worker) => !assignedIds.has(worker.id));
   }, [workersList, assignedIds]);
 
   if (isLoading) return <div>Loading...</div>;
@@ -5323,23 +7094,26 @@ export function ProjectDetailPage() {
 
     if (!selectedWorkerId) return;
 
+    const currentProjectId = project.id;
+
     try {
       await assign.mutateAsync({
-        projectId: project.id,
+        projectId: currentProjectId,
         workerId: selectedWorkerId
       });
+
       setIsAssignOpen(false);
       setSelectedWorkerId("");
-    } catch (e: unknown) {
+    } catch (error: unknown) {
       if (
-        isApiErrorResponse(e) &&
-        e.error.code === "ASSIGNMENT_ALREADY_EXISTS"
+        isApiErrorResponse(error) &&
+        error.error.code === "ASSIGNMENT_ALREADY_EXISTS"
       ) {
         setAssignErrorMsg("Este trabajador ya está asignado a este proyecto.");
         return;
       }
 
-      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
         setAssignErrorMsg("Debes iniciar sesión para asignar trabajadores.");
         goToLoginWithReturn();
         return;
@@ -5360,10 +7134,15 @@ export function ProjectDetailPage() {
       return;
     }
 
+    const currentProjectId = project.id;
+
     try {
-      await unassign.mutateAsync({ projectId: project.id, workerId });
-    } catch (e: unknown) {
-      if (isApiErrorResponse(e) && e.error.code === "UNAUTHORIZED") {
+      await unassign.mutateAsync({
+        projectId: currentProjectId,
+        workerId
+      });
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
         setActionMessage("Debes iniciar sesión para desasignar trabajadores.");
         goToLoginWithReturn();
         return;
@@ -5380,9 +7159,11 @@ export function ProjectDetailPage() {
       </div>
 
       <h2 style={{ margin: 0 }}>{project.name}</h2>
+
       <p style={{ marginTop: 6 }}>
         <strong>Client:</strong> {project.clientName}
       </p>
+
       <p style={{ marginTop: 6 }}>
         <strong>Dates:</strong> {project.startDate}{" "}
         {project.endDate ? `→ ${project.endDate}` : ""}
@@ -5411,9 +7192,7 @@ export function ProjectDetailPage() {
         {isAuthenticated ? (
           <button onClick={() => setIsAssignOpen(true)}>Assign worker</button>
         ) : (
-          <button onClick={goToLoginWithReturn} title="Debes iniciar sesión">
-            Assign worker
-          </button>
+          <button onClick={goToLoginWithReturn}>Assign worker</button>
         )}
       </div>
 
@@ -5421,9 +7200,9 @@ export function ProjectDetailPage() {
         <div style={{ marginTop: 12 }}>No workers assigned yet</div>
       ) : (
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {project.workers.map((w) => (
+          {project.workers.map((worker) => (
             <div
-              key={w.id}
+              key={worker.id}
               style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}
             >
               <div
@@ -5434,15 +7213,15 @@ export function ProjectDetailPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 600 }}>{w.name}</div>
+                  <div style={{ fontWeight: 600 }}>{worker.name}</div>
                   <div style={{ fontSize: 14, opacity: 0.8 }}>
-                    {w.role} · {w.seniority}
+                    {worker.role} · {worker.seniority}
                   </div>
                 </div>
 
                 {isAuthenticated ? (
                   <button
-                    onClick={() => onUnassign(w.id)}
+                    onClick={() => onUnassign(worker.id)}
                     disabled={unassign.isPending}
                     title="Unassign"
                   >
@@ -5476,7 +7255,7 @@ export function ProjectDetailPage() {
               borderRadius: 12,
               padding: 16
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <h3 style={{ marginTop: 0 }}>Assign worker</h3>
 
@@ -5489,12 +7268,12 @@ export function ProjectDetailPage() {
                 <label style={{ fontSize: 14 }}>Worker</label>
                 <select
                   value={selectedWorkerId}
-                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                  onChange={(event) => setSelectedWorkerId(event.target.value)}
                 >
                   <option value="">Select...</option>
-                  {availableWorkers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} — {w.role} ({w.seniority})
+                  {availableWorkers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.name} — {worker.role} ({worker.seniority})
                     </option>
                   ))}
                 </select>
@@ -5525,6 +7304,412 @@ export function ProjectDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/projects/pages/ProjectsListPage.tsx ===
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useProjects } from "../hooks/useProjects";
+import {
+  useCreateProject,
+  useDeleteProject,
+  useUpdateProject
+} from "../hooks/useProjectMutations";
+import { ProjectModal } from "../components/ProjectModal";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import { isApiErrorResponse, type ProjectResponseDTO } from "../types/projects";
+import type { ProjectFormValues } from "../schemas/projectForm.schema";
+
+type ProjectModalState =
+  | { mode: "create"; project: null }
+  | { mode: "edit"; project: ProjectResponseDTO }
+  | null;
+
+export function ProjectsListPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading, error } = useProjects();
+
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
+
+  const [modalState, setModalState] = useState<ProjectModalState>(null);
+  const [submitError, setSubmitError] = useState("");
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading projects</div>;
+
+  const projects = data?.items ?? [];
+
+  async function handleCreate(values: ProjectFormValues) {
+    setSubmitError("");
+
+    try {
+      await createProject.mutateAsync(values);
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      if (
+        isApiErrorResponse(error) &&
+        error.error.code === "PROJECT_ALREADY_EXISTS"
+      ) {
+        setSubmitError(
+          "A project with the same name, client and date already exists."
+        );
+        return;
+      }
+
+      setSubmitError("Could not create project.");
+    }
+  }
+
+  async function handleUpdate(values: ProjectFormValues) {
+    if (!modalState || modalState.mode !== "edit") return;
+
+    setSubmitError("");
+
+    try {
+      await updateProject.mutateAsync({
+        projectId: modalState.project.id,
+        data: values
+      });
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      if (
+        isApiErrorResponse(error) &&
+        error.error.code === "PROJECT_ALREADY_EXISTS"
+      ) {
+        setSubmitError(
+          "A project with the same name, client and date already exists."
+        );
+        return;
+      }
+
+      setSubmitError("Could not update project.");
+    }
+  }
+
+  async function handleDelete(projectId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project?"
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteProject.mutateAsync(projectId);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/projects" } });
+        return;
+      }
+
+      window.alert("Could not delete project.");
+    }
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 16
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Projects</h2>
+
+        {isAuthenticated ? (
+          <button
+            onClick={() => setModalState({ mode: "create", project: null })}
+          >
+            Create project
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login", { state: { from: "/projects" } })}
+          >
+            Login to create
+          </button>
+        )}
+      </div>
+
+      {!projects.length ? <div>No projects yet</div> : null}
+
+      {projects.map((project) => (
+        <div
+          key={project.id}
+          style={{
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            marginBottom: 12
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "start",
+              gap: 12
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0 }}>
+                <Link to={`/projects/${project.id}`}>{project.name}</Link>
+              </h3>
+              <p style={{ margin: "6px 0 0 0" }}>{project.clientName}</p>
+              <p style={{ margin: "6px 0 0 0", fontSize: 14 }}>
+                {project.startDate}{" "}
+                {project.endDate ? `→ ${project.endDate}` : ""}
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setModalState({ mode: "edit", project })}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(project.id)}
+                  disabled={deleteProject.isPending}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
+      <ProjectModal
+        isOpen={modalState !== null}
+        mode={modalState?.mode ?? "create"}
+        initialValues={
+          modalState?.mode === "edit"
+            ? {
+                name: modalState.project.name,
+                clientName: modalState.project.clientName,
+                startDate: modalState.project.startDate,
+                endDate: modalState.project.endDate
+              }
+            : undefined
+        }
+        isSubmitting={createProject.isPending || updateProject.isPending}
+        errorMessage={submitError}
+        onClose={() => {
+          setModalState(null);
+          setSubmitError("");
+        }}
+        onSubmit={modalState?.mode === "edit" ? handleUpdate : handleCreate}
+      />
+    </div>
+  );
+}
+```
+
+```text
+=== apps/web/src/features/projects/pages/WorkersListPage.tsx ===
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useWorkers } from "../hooks/useWorkers";
+import {
+  useCreateWorker,
+  useDeleteWorker,
+  useUpdateWorker
+} from "../hooks/useWorkerMutations";
+import { WorkerModal } from "../components/WorkerModal";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import { isApiErrorResponse, type WorkerDTO } from "../types/projects";
+import type { WorkerFormValues } from "../schemas/workerForm.schema";
+
+type WorkerModalState =
+  | { mode: "create"; worker: null }
+  | { mode: "edit"; worker: WorkerDTO }
+  | null;
+
+export function WorkersListPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading, error } = useWorkers();
+
+  const createWorker = useCreateWorker();
+  const updateWorker = useUpdateWorker();
+  const deleteWorker = useDeleteWorker();
+
+  const [modalState, setModalState] = useState<WorkerModalState>(null);
+  const [submitError, setSubmitError] = useState("");
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading workers</div>;
+
+  const workers = data?.items ?? [];
+
+  async function handleCreate(values: WorkerFormValues) {
+    setSubmitError("");
+
+    try {
+      await createWorker.mutateAsync(values);
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      setSubmitError("Could not create worker.");
+    }
+  }
+
+  async function handleUpdate(values: WorkerFormValues) {
+    if (!modalState || modalState.mode !== "edit") return;
+
+    setSubmitError("");
+
+    try {
+      await updateWorker.mutateAsync({
+        workerId: modalState.worker.id,
+        data: values
+      });
+      setModalState(null);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      setSubmitError("Could not update worker.");
+    }
+  }
+
+  async function handleDelete(workerId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this worker?"
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteWorker.mutateAsync(workerId);
+    } catch (error: unknown) {
+      if (isApiErrorResponse(error) && error.error.code === "UNAUTHORIZED") {
+        navigate("/login", { state: { from: "/workers" } });
+        return;
+      }
+
+      window.alert("Could not delete worker.");
+    }
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 16
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Workers</h2>
+
+        {isAuthenticated ? (
+          <button
+            onClick={() => setModalState({ mode: "create", worker: null })}
+          >
+            Create worker
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login", { state: { from: "/workers" } })}
+          >
+            Login to create
+          </button>
+        )}
+      </div>
+
+      {!workers.length ? <div>No workers yet</div> : null}
+
+      {workers.map((worker) => (
+        <div
+          key={worker.id}
+          style={{
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            marginBottom: 12
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "start",
+              gap: 12
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0 }}>{worker.name}</h3>
+              <p style={{ margin: "6px 0 0 0" }}>{worker.role}</p>
+              <p style={{ margin: "6px 0 0 0", fontSize: 14 }}>
+                {worker.seniority}
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setModalState({ mode: "edit", worker })}>
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(worker.id)}
+                  disabled={deleteWorker.isPending}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
+      <WorkerModal
+        isOpen={modalState !== null}
+        mode={modalState?.mode ?? "create"}
+        initialValues={
+          modalState?.mode === "edit"
+            ? {
+                name: modalState.worker.name,
+                role: modalState.worker.role,
+                seniority: modalState.worker.seniority
+              }
+            : undefined
+        }
+        isSubmitting={createWorker.isPending || updateWorker.isPending}
+        errorMessage={submitError}
+        onClose={() => {
+          setModalState(null);
+          setSubmitError("");
+        }}
+        onSubmit={modalState?.mode === "edit" ? handleUpdate : handleCreate}
+      />
     </div>
   );
 }

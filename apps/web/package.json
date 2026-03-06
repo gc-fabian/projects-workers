@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier -w .",
-    "format:check": "prettier -c ."
+    "format:check": "prettier -c .",
+    "api:seed": "npm --prefix apps/api run seed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
