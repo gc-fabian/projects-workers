@@ -5,11 +5,19 @@ export type WorkerDTO = {
   seniority: "junior" | "semi-senior" | "senior";
 };
 
+export type WorkerCreateDTO = {
+  name: string;
+  role: string;
+  seniority: "junior" | "semi-senior" | "senior";
+};
+
+export type WorkerUpdateDTO = Partial<WorkerCreateDTO>;
+
 export type ProjectResponseDTO = {
   id: string;
   name: string;
   clientName: string;
-  startDate: string; // YYYY-MM-DD
+  startDate: string;
   endDate?: string;
   workers: WorkerDTO[];
 };
@@ -36,11 +44,13 @@ export type ApiErrorResponseDTO = {
   };
 };
 
-export function isApiErrorResponse(e: unknown): e is ApiErrorResponseDTO {
-  if (!e || typeof e !== "object") return false;
-  if (!("error" in e)) return false;
+export function isApiErrorResponse(
+  error: unknown
+): error is ApiErrorResponseDTO {
+  if (!error || typeof error !== "object") return false;
+  if (!("error" in error)) return false;
 
-  const maybeError = (e as { error?: unknown }).error;
+  const maybeError = (error as { error?: unknown }).error;
   if (!maybeError || typeof maybeError !== "object") return false;
 
   return typeof (maybeError as { code?: unknown }).code === "string";

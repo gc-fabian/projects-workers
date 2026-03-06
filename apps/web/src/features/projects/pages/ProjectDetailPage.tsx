@@ -47,6 +47,8 @@ export function ProjectDetailPage() {
   }
 
   async function onAssign() {
+    if (!project) return;
+
     setAssignErrorMsg("");
     setActionMessage("");
 
@@ -58,9 +60,11 @@ export function ProjectDetailPage() {
 
     if (!selectedWorkerId) return;
 
+    const currentProjectId = project.id;
+
     try {
       await assign.mutateAsync({
-        projectId: project.id,
+        projectId: currentProjectId,
         workerId: selectedWorkerId
       });
 
@@ -86,6 +90,8 @@ export function ProjectDetailPage() {
   }
 
   async function onUnassign(workerId: string) {
+    if (!project) return;
+
     setActionMessage("");
 
     if (!isAuthenticated) {
@@ -94,9 +100,11 @@ export function ProjectDetailPage() {
       return;
     }
 
+    const currentProjectId = project.id;
+
     try {
       await unassign.mutateAsync({
-        projectId: project.id,
+        projectId: currentProjectId,
         workerId
       });
     } catch (error: unknown) {

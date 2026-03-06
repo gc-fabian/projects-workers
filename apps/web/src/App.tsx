@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { ProjectsListPage } from "./features/projects/pages/ProjectsListPage";
 import { ProjectDetailPage } from "./features/projects/pages/ProjectDetailPage";
+import { WorkersListPage } from "./features/projects/pages/WorkersListPage";
 import { LoginPage } from "./features/auth/pages/LoginPage";
 import { useAuth } from "./features/auth/context/AuthContext";
 
@@ -18,6 +19,7 @@ function AppShell() {
         }}
       >
         <Link to="/projects">Projects</Link>
+        <Link to="/workers">Workers</Link>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
           {isAuthenticated ? (
@@ -36,6 +38,7 @@ function AppShell() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+        <Route path="/workers" element={<WorkersListPage />} />
       </Routes>
     </div>
   );

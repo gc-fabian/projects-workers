@@ -2,28 +2,27 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  projectFormSchema,
-  type ProjectFormValues
-} from "../schemas/projectForm.schema";
+  workerFormSchema,
+  type WorkerFormValues
+} from "../schemas/workerForm.schema";
 
-type ProjectModalProps = {
+type WorkerModalProps = {
   isOpen: boolean;
   mode: "create" | "edit";
-  initialValues?: Partial<ProjectFormValues>;
+  initialValues?: Partial<WorkerFormValues>;
   isSubmitting: boolean;
   errorMessage: string;
   onClose: () => void;
-  onSubmit: (values: ProjectFormValues) => Promise<void>;
+  onSubmit: (values: WorkerFormValues) => Promise<void>;
 };
 
-const emptyValues: ProjectFormValues = {
+const emptyValues: WorkerFormValues = {
   name: "",
-  clientName: "",
-  startDate: "",
-  endDate: ""
+  role: "",
+  seniority: "junior"
 };
 
-export function ProjectModal({
+export function WorkerModal({
   isOpen,
   mode,
   initialValues,
@@ -31,14 +30,14 @@ export function ProjectModal({
   errorMessage,
   onClose,
   onSubmit
-}: ProjectModalProps) {
+}: WorkerModalProps) {
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema),
+  } = useForm<WorkerFormValues>({
+    resolver: zodResolver(workerFormSchema),
     defaultValues: emptyValues
   });
 
@@ -47,20 +46,12 @@ export function ProjectModal({
 
     reset({
       name: initialValues?.name ?? "",
-      clientName: initialValues?.clientName ?? "",
-      startDate: initialValues?.startDate ?? "",
-      endDate: initialValues?.endDate ?? ""
+      role: initialValues?.role ?? "",
+      seniority: initialValues?.seniority ?? "junior"
     });
   }, [initialValues, isOpen, reset]);
 
   if (!isOpen) return null;
-
-  async function submit(values: ProjectFormValues) {
-    await onSubmit({
-      ...values,
-      endDate: values.endDate?.trim() ? values.endDate : undefined
-    });
-  }
 
   return (
     <div
@@ -86,50 +77,40 @@ export function ProjectModal({
         onClick={(event) => event.stopPropagation()}
       >
         <h3 style={{ marginTop: 0 }}>
-          {mode === "create" ? "Create project" : "Edit project"}
+          {mode === "create" ? "Create worker" : "Edit worker"}
         </h3>
 
         <form
-          onSubmit={handleSubmit(submit)}
+          onSubmit={handleSubmit(onSubmit)}
           style={{ display: "grid", gap: 12 }}
         >
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="project-name">Name</label>
-            <input id="project-name" {...register("name")} />
+            <label htmlFor="worker-name">Name</label>
+            <input id="worker-name" {...register("name")} />
             {errors.name ? (
               <span style={{ color: "crimson" }}>{errors.name.message}</span>
             ) : null}
           </div>
 
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="project-clientName">Client</label>
-            <input id="project-clientName" {...register("clientName")} />
-            {errors.clientName ? (
-              <span style={{ color: "crimson" }}>
-                {errors.clientName.message}
-              </span>
+            <label htmlFor="worker-role">Role</label>
+            <input id="worker-role" {...register("role")} />
+            {errors.role ? (
+              <span style={{ color: "crimson" }}>{errors.role.message}</span>
             ) : null}
           </div>
 
           <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="project-startDate">Start date</label>
-            <input
-              id="project-startDate"
-              type="date"
-              {...register("startDate")}
-            />
-            {errors.startDate ? (
+            <label htmlFor="worker-seniority">Seniority</label>
+            <select id="worker-seniority" {...register("seniority")}>
+              <option value="junior">junior</option>
+              <option value="semi-senior">semi-senior</option>
+              <option value="senior">senior</option>
+            </select>
+            {errors.seniority ? (
               <span style={{ color: "crimson" }}>
-                {errors.startDate.message}
+                {errors.seniority.message}
               </span>
-            ) : null}
-          </div>
-
-          <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="project-endDate">End date</label>
-            <input id="project-endDate" type="date" {...register("endDate")} />
-            {errors.endDate ? (
-              <span style={{ color: "crimson" }}>{errors.endDate.message}</span>
             ) : null}
           </div>
 
